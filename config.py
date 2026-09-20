@@ -4,7 +4,8 @@ from pydantic import BaseModel, Field
 from typing import List
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
-MODEL_NAME = "llama3.2"
+MODELS = ["llama3.2", "mistral", "qwen2.5"]
+
 RUNS_PER_PROMPT = 3
 MAX_RETRIES = 3
 RESULTS_DIR = "results"
