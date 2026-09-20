@@ -15,7 +15,7 @@ from benchmark import run_benchmark_for_model
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
-    
+
 # ==========================================
 # 1. Entities & State
 # ==========================================
@@ -216,9 +216,17 @@ def start_benchmark_endpoint(
 def get_benchmark_status_endpoint(state: AppState = Depends(get_app_state)):
     return {"benchmark_running": state.benchmark_running}
 
+@app.get("/health")
+def health_check():
+    """Simple health check endpoint to verify the API is running."""
+    return {"status": "healthy", "service": "Local AI Assistant API"}
+
 @app.get("/api/benchmark/metrics")
 def get_dashboard_metrics_endpoint(
     repo: IMetricsRepository = Depends(get_metrics_repository)
+
+
+    
 ):
     try:
         return repo.get_latest_metrics()
