@@ -1,15 +1,28 @@
+from pydantic import BaseModel
+from typing import List
+from pydantic import BaseModel, Field
+from typing import List
+
 OLLAMA_URL = "http://localhost:11434/api/generate"
 MODEL_NAME = "llama3.2"
 RUNS_PER_PROMPT = 3
+MAX_RETRIES = 3
 RESULTS_DIR = "results"
+TEMPERATURES = [0.0,  0.7] #0.2, 0.5, 1.0,
+
+class UniversalResponse(BaseModel):
+    """A universal schema enforcing Chain-of-Thought reasoning for all prompts."""
+    reasoning: str = Field(description="Step-by-step logical deduction or thought process.")
+    final_answer: str = Field(description="The exact answer, code, or summary requested.")
+    confidence_score: float = Field(description="A score between 0.0 and 1.0 indicating confidence.")
 
 PROMPTS = {
         # Category 1: Factual Recall & Technical Definitions
         "01": "Explain the difference between a REST API and a GraphQL API in exactly 3 sentences.",
-        "02": "Explain the ACID principles in database management. Keep it brief.",
-        "03": "Explain the concept of container orchestration in simple terms.",
-        "04": "What is the difference between a compiled language and an interpreted language?",
-        "05": "How does a Content Delivery Network (CDN) reduce latency?",
+        # "02": "Explain the ACID principles in database management. Keep it brief.",
+        # "03": "Explain the concept of container orchestration in simple terms.",
+        # "04": "What is the difference between a compiled language and an interpreted language?",
+        # "05": "How does a Content Delivery Network (CDN) reduce latency?",
 
         # # Category 2: Strict Instruction Following & Format Constraints
         # "06": "Summarize the difference between TCP and UDP. You must respond in exactly two bullet points.",
