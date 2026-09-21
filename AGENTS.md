@@ -20,6 +20,7 @@ Bootstrap dashboard prototype that calls the API.
 - Python 3.13, virtual environment in `.venv/`, packages installed with `pip`
 - FastAPI + Uvicorn (API), Pydantic v2 (request models and LLM output schema)
 - `requests` (blocking HTTP to Ollama), `psutil` and `nvidia-smi` (resource metrics)
+- `pytest` (unit tests)
 - Ollama running at `http://localhost:11434` with the configured models pulled
 - No database; state is in memory and benchmark output is CSV
 
@@ -35,6 +36,7 @@ should follow the modular conventions instead of adding to these files.
 - `validator.py` - Pydantic JSON validation of model output
 - `benchmark.py` - runs prompts across temperatures per model and writes CSV
 - `resource_monitor.py` - CPU, RAM, and VRAM sampling for the Ollama process tree
+- `tests/` - pytest unit tests; `pytest.ini` puts the project root on the import path
 - `results/` - benchmark CSV output (timestamped per model and run)
 - `Front end/prototype.html` - static dashboard prototype
 
@@ -90,6 +92,7 @@ Windows, from the project root.
   interactive docs at `/docs`, health at `/health`); `python main.py` does the same
 - Benchmark: start it with `POST /api/benchmark/start`; there is no standalone
   command-line entry point
+- Test: `python -m pytest` (needs no Ollama or GPU)
 - Build: none
 - Lint: none configured
 
@@ -98,11 +101,14 @@ or benchmark calls will succeed.
 
 ## Testing
 
-No test runner is set up and there are no tests. Testing is opt-in: it becomes a
-gate once a `test` command is declared in this Commands section. The natural
-runner for this stack is `pytest`. Worth testing when it is added: pure logic such
-as `OutputValidator.validate_json`, the retry feedback flow in `inference.py`
-(with `requests` mocked), and `CSVMetricsRepository`. Do not unit test live Ollama,
+pytest is set up and the `test` command above is the gate. The suite covers
+`OutputValidator.validate_json`, the retry flow in `inference.py` (with `requests`
+and resource sampling mocked), and `CSVMetricsRepository` (against temporary
+directories). Routes, services, `OllamaClient`, `benchmark.py`, and
+`resource_monitor.py` are not covered yet. Do not unit test live Ollama,
 `nvidia-smi`, or the static dashboard; verify those by running the app.
+
+Tests import the flat root modules, so the modular restructure must update their
+imports.
 
 No `Verify` command or GitHub workflow exists yet.
