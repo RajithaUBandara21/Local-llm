@@ -3,7 +3,6 @@ import csv
 import glob
 import requests
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel

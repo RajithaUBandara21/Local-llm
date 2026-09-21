@@ -1,0 +1,10 @@
+# AI Blueprint local workflow files
+.agents/
+.claude/
+blueprint/
+CLAUDE.md
+
+# Python and local environment
+.venv/
+__pycache__/
+.env
