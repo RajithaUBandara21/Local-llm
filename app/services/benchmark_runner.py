@@ -1,9 +1,7 @@
 import csv
 import os
-import requests
 from datetime import datetime
 from app.config import (
-    OLLAMA_GENERATE_URL,
     RESULTS_DIR,
     RUNS_PER_PROMPT,
     TEMPERATURES,
@@ -24,16 +22,6 @@ def create_results_file(model_name: str):
     os.makedirs(RESULTS_DIR, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     return os.path.join(RESULTS_DIR, f"benchmark_phase2_attempts_{model_name}_{timestamp}.csv")
-
-def unload_model(model_name: str):
-    """Frees VRAM by explicitly instructing Ollama to unload the model."""
-    print(f"\n[RESOURCE OPTIMIZATION] Unloading {model_name} from VRAM...")
-    try:
-        # Sending keep_alive=0 to Ollama unloads the model immediately
-        requests.post(OLLAMA_GENERATE_URL, json={"model": model_name, "keep_alive": 0})
-        print(f"[RESOURCE OPTIMIZATION] {model_name} successfully unloaded.\n")
-    except Exception as e:
-        print(f"[RESOURCE OPTIMIZATION] Failed to unload {model_name}: {e}\n")
 
 def run_benchmark_for_model(model_name: str):
     """Run all prompts across temperatures for a specific model."""
@@ -103,4 +91,3 @@ def run_benchmark_for_model(model_name: str):
                         print(f"    >>> Status: FAILED (Graceful Failure: {result['message']})\n")
     
     print(f"\nBenchmark complete for {model_name}!")
-    unload_model(model_name)

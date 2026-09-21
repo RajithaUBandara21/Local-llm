@@ -74,12 +74,13 @@ def test_unreadable_env_file_gives_no_values(tmp_path):
     assert read_env_file(directory) == {}
 
 
-def test_base_url_loses_its_trailing_slash_and_derives_the_generate_url(monkeypatch):
+def test_base_url_loses_its_trailing_slash_and_derives_the_endpoint_urls(monkeypatch):
     monkeypatch.setenv("OLLAMA_URL", "http://host:1/")
     try:
         reloaded = importlib.reload(config)
         assert reloaded.OLLAMA_URL == "http://host:1"
         assert reloaded.OLLAMA_GENERATE_URL == "http://host:1/api/generate"
+        assert reloaded.OLLAMA_PS_URL == "http://host:1/api/ps"
     finally:
         monkeypatch.undo()
         importlib.reload(config)

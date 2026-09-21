@@ -36,6 +36,7 @@ def load_setting(name: str, default: str, env_file: Path = ENV_FILE) -> str:
 
 OLLAMA_URL = load_setting("OLLAMA_URL", "http://localhost:11434").rstrip("/")
 OLLAMA_GENERATE_URL = f"{OLLAMA_URL}/api/generate"
+OLLAMA_PS_URL = f"{OLLAMA_URL}/api/ps"
 
 MODELS = ["llama3.2", "phi-4-Q4", "mistral-7b-q4", "mistral-7b-Q5"]
 TEMPERATURES = [0.0, 0.7]

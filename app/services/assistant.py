@@ -2,6 +2,7 @@ from fastapi import HTTPException
 
 from app.clients.base import ILLMClient
 from app.config import MODELS
+from app.services.model_loading import unload_others
 from app.state import AppState
 
 
@@ -14,6 +15,7 @@ class AssistantService:
 
     def process_chat(self, prompt: str) -> dict:
         try:
+            unload_others(self.client, self.state.active_model)
             return self.client.generate(self.state.active_model, prompt, self.state.active_temperature)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"LLM Generation failed: {str(e)}")
@@ -22,7 +24,7 @@ class AssistantService:
         if new_model not in MODELS:
             raise HTTPException(status_code=400, detail=f"Model {new_model} not configured.")
         try:
-            self.client.unload_model(self.state.active_model)
+            unload_others(self.client, new_model)
             self.client.load_model(new_model)
             self.state.active_model = new_model
             return new_model

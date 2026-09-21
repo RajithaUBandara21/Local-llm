@@ -12,3 +12,6 @@ class ILLMClient(ABC):
 
     @abstractmethod
     def unload_model(self, model: str) -> None: pass
+
+    @abstractmethod
+    def list_loaded_models(self) -> list[str]: pass

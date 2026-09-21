@@ -10,6 +10,7 @@ from app.routes.benchmark import (
 from app.routes.health import health_check
 from app.services.benchmark import BenchmarkService
 from app.state import AppState
+from tests.fakes import FakeClient
 
 
 class FakeRepository(IMetricsRepository):
@@ -28,7 +29,7 @@ def test_health_reports_the_service():
 
 def test_start_schedules_the_pipeline_in_the_background():
     state = AppState()
-    service = BenchmarkService(state)
+    service = BenchmarkService(state, FakeClient())
     tasks = BackgroundTasks()
 
     result = start_benchmark_endpoint(tasks, state, service)
@@ -41,9 +42,10 @@ def test_start_is_refused_while_a_benchmark_is_running():
     state = AppState()
     state.benchmark_running = True
     tasks = BackgroundTasks()
+    service = BenchmarkService(state, FakeClient())
 
     with pytest.raises(HTTPException) as error:
-        start_benchmark_endpoint(tasks, state, BenchmarkService(state))
+        start_benchmark_endpoint(tasks, state, service)
 
     assert error.value.status_code == 400
     assert error.value.detail == "A benchmark is already running."

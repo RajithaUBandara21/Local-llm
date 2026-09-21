@@ -1,34 +1,10 @@
 import pytest
 from fastapi import HTTPException
 
-from app.clients.base import ILLMClient
 from app.config import MODELS
 from app.services.assistant import AssistantService
 from app.state import AppState
-
-
-class FakeClient(ILLMClient):
-    """Records calls; a failure can be queued for any method."""
-
-    def __init__(self, reply=None, fail_on=None):
-        self.reply = reply or {"response": "hello"}
-        self.fail_on = fail_on
-        self.calls = []
-
-    def _record(self, name, *args):
-        self.calls.append((name, *args))
-        if self.fail_on == name:
-            raise RuntimeError(f"{name} failed")
-
-    def generate(self, model, prompt, temperature):
-        self._record("generate", model, prompt, temperature)
-        return self.reply
-
-    def load_model(self, model):
-        self._record("load_model", model)
-
-    def unload_model(self, model):
-        self._record("unload_model", model)
+from tests.fakes import FakeClient
 
 
 def make_service(client=None):
@@ -45,7 +21,34 @@ def test_chat_uses_active_model_and_temperature():
     reply = service.process_chat("hi")
 
     assert reply == {"response": "hello"}
-    assert client.calls == [("generate", MODELS[1], "hi", 0.2)]
+    assert client.calls == [("list_loaded_models",), ("generate", MODELS[1], "hi", 0.2)]
+
+
+def test_chat_unloads_another_loaded_model_before_generating():
+    service, client, state = make_service(FakeClient(loaded=[f"{MODELS[1]}:latest", f"{MODELS[0]}:latest"]))
+    state.active_model = MODELS[0]
+
+    service.process_chat("hi")
+
+    assert client.calls == [
+        ("list_loaded_models",),
+        ("unload_model", f"{MODELS[1]}:latest"),
+        ("generate", MODELS[0], "hi", state.active_temperature),
+    ]
+
+
+@pytest.mark.parametrize("failing_call", ["list_loaded_models", "unload_model"])
+def test_chat_stops_before_generating_when_exclusivity_fails(failing_call):
+    client = FakeClient(fail_on=failing_call, loaded=[f"{MODELS[1]}:latest"])
+    service, _, state = make_service(client)
+    state.active_model = MODELS[0]
+
+    with pytest.raises(HTTPException) as error:
+        service.process_chat("hi")
+
+    assert error.value.status_code == 500
+    assert error.value.detail == f"LLM Generation failed: {failing_call} failed"
+    assert ("generate", MODELS[0], "hi", state.active_temperature) not in client.calls
 
 
 def test_chat_failure_is_wrapped_in_500():
@@ -71,19 +74,24 @@ def test_unknown_model_is_rejected_without_touching_the_client():
     assert state.active_model == before
 
 
-def test_switch_unloads_the_active_model_then_loads_the_new_one():
-    service, client, state = make_service()
-    previous = state.active_model
+def test_switch_unloads_every_other_loaded_model_then_loads_the_new_one():
+    loaded = [f"{MODELS[0]}:latest", "not-configured:latest", f"{MODELS[1]}:latest"]
+    service, client, state = make_service(FakeClient(loaded=loaded))
 
     assert service.switch_active_model(MODELS[1]) == MODELS[1]
 
-    assert client.calls == [("unload_model", previous), ("load_model", MODELS[1])]
+    assert client.calls == [
+        ("list_loaded_models",),
+        ("unload_model", f"{MODELS[0]}:latest"),
+        ("unload_model", "not-configured:latest"),
+        ("load_model", MODELS[1]),
+    ]
     assert state.active_model == MODELS[1]
 
 
-@pytest.mark.parametrize("failing_call", ["unload_model", "load_model"])
+@pytest.mark.parametrize("failing_call", ["list_loaded_models", "unload_model", "load_model"])
 def test_switch_failure_gives_500_and_keeps_the_active_model(failing_call):
-    service, _, state = make_service(FakeClient(fail_on=failing_call))
+    service, _, state = make_service(FakeClient(fail_on=failing_call, loaded=[f"{MODELS[0]}:latest"]))
     before = state.active_model
 
     with pytest.raises(HTTPException) as error:

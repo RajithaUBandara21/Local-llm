@@ -40,8 +40,9 @@ inward (routes, then services, then interfaces).
   implementations are chosen
 - `app/routes/` - HTTP handlers only (`assistant`, `benchmark`, `health`)
 - `app/services/` - business rules (`assistant`, `benchmark`), the benchmark
-  runner, streaming inference with schema validation and retry, and
-  `output_validator`
+  runner, streaming inference with schema validation and retry,
+  `output_validator`, and `model_loading` (unloads every loaded model except the
+  one about to be used)
 - `app/clients/` - `ILLMClient` and `OllamaClient`
 - `app/repositories/` - `IMetricsRepository` and `CSVMetricsRepository`
 - `app/resource_monitor.py` - CPU, RAM, and VRAM sampling for the Ollama process tree
@@ -121,8 +122,10 @@ pytest is set up and the `test` command above is the gate. The suite covers
 `OutputValidator.validate_json`, the retry flow in `app/services/inference.py`
 (with `requests` and resource sampling mocked), `CSVMetricsRepository` (against
 temporary directories), the `.env` config loader, the prompt switch,
-`AssistantService`, `BenchmarkService`, and the benchmark route functions (called
-directly with fakes, since `httpx` for `TestClient` is not installed).
+`AssistantService`, `BenchmarkService`, `unload_others` in
+`app/services/model_loading.py`, and the benchmark route functions (called
+directly with fakes, since `httpx` for `TestClient` is not installed). The shared
+fake `ILLMClient` is `tests/fakes.py`.
 `OllamaClient`, `benchmark_runner`, and `resource_monitor` are not covered. Do not unit test live Ollama,
 `nvidia-smi`, or the static dashboard; verify those by running the app.
 
