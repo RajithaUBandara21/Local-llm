@@ -49,6 +49,7 @@ inward (routes, then services, then interfaces).
 - `tests/` - pytest unit tests; `pytest.ini` puts the project root on the import path
 - `results/` - benchmark CSV output (timestamped per model and run)
 - `.env.example` - tracked list of settings; copy to the git-ignored `.env`
+- `docs/` - written deliverables: `discovery-brief.md` and `architecture.md`
 - `Front end/prototype.html` - static dashboard prototype
 
 ## Settings
