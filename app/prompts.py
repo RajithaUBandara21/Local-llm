@@ -41,6 +41,6 @@ ALL_PROMPTS = {
     "40": "Write a brief incident report summary for a database outage that lasted 45 minutes due to an expired TLS certificate."
 }
 
-ACTIVE_PROMPT_IDS = ["01"]
+ACTIVE_PROMPT_IDS = list(ALL_PROMPTS)
 
 PROMPTS = {prompt_id: ALL_PROMPTS[prompt_id] for prompt_id in ACTIVE_PROMPT_IDS}

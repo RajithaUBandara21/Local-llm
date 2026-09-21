@@ -8,6 +8,7 @@ from app.routes.benchmark import (
     start_benchmark_endpoint,
 )
 from app.routes.health import health_check
+from app.schemas import BenchmarkRequest, BenchmarkSetting
 from app.services.benchmark import BenchmarkService
 from app.state import AppState
 from tests.fakes import FakeClient
@@ -36,6 +37,35 @@ def test_start_schedules_the_pipeline_in_the_background():
 
     assert result == {"status": "Benchmark initiated in the background."}
     assert [task.func for task in tasks.tasks] == [service.run_pipeline]
+    assert tasks.tasks[0].args == (service.build_plan(None),)
+
+
+def test_start_passes_the_chosen_settings_to_the_pipeline():
+    state = AppState()
+    service = BenchmarkService(state, FakeClient())
+    tasks = BackgroundTasks()
+    request = BenchmarkRequest(
+        runs_per_prompt=1, configs=[BenchmarkSetting(model="llama3.2", temperature=0.7)]
+    )
+
+    start_benchmark_endpoint(tasks, state, service, request)
+
+    (plan,) = tasks.tasks[0].args
+    assert plan.runs_per_prompt == 1
+    assert plan.jobs == [("llama3.2", [0.7])]
+
+
+def test_start_refuses_a_bad_request_and_schedules_nothing():
+    state = AppState()
+    service = BenchmarkService(state, FakeClient())
+    tasks = BackgroundTasks()
+    request = BenchmarkRequest(configs=[BenchmarkSetting(model="gpt-9", temperature=0.0)])
+
+    with pytest.raises(HTTPException) as error:
+        start_benchmark_endpoint(tasks, state, service, request)
+
+    assert error.value.status_code == 400
+    assert tasks.tasks == []
 
 
 def test_start_is_refused_while_a_benchmark_is_running():

@@ -10,5 +10,6 @@ def test_prompts_are_the_active_subset_in_order():
     assert all(PROMPTS[prompt_id] == ALL_PROMPTS[prompt_id] for prompt_id in PROMPTS)
 
 
-def test_only_prompt_01_runs_until_the_suite_is_enabled():
-    assert ACTIVE_PROMPT_IDS == ["01"]
+def test_the_full_suite_of_40_prompts_runs():
+    assert list(PROMPTS) == [f"{n:02d}" for n in range(1, 41)]
+    assert all(text.strip() for text in PROMPTS.values())

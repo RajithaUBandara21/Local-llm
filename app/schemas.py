@@ -18,3 +18,13 @@ class ModelChangeRequest(BaseModel):
 
 class TemperatureRequest(BaseModel):
     temperature: float
+
+
+class BenchmarkSetting(BaseModel):
+    model: str
+    temperature: float
+
+
+class BenchmarkRequest(BaseModel):
+    configs: list[BenchmarkSetting] | None = None
+    runs_per_prompt: int | None = None

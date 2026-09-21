@@ -41,5 +41,7 @@ OLLAMA_PS_URL = f"{OLLAMA_URL}/api/ps"
 MODELS = ["llama3.2", "phi-4-Q4", "mistral-7b-q4", "mistral-7b-Q5"]
 TEMPERATURES = [0.0, 0.7]
 RUNS_PER_PROMPT = 3
+# Upper bound for a per-request override, so a typo cannot start an enormous run.
+MAX_RUNS_PER_PROMPT = 10
 MAX_RETRIES = 3
 RESULTS_DIR = "results"

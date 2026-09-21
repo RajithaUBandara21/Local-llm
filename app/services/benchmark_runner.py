@@ -1,11 +1,7 @@
 import csv
 import os
 from datetime import datetime
-from app.config import (
-    RESULTS_DIR,
-    RUNS_PER_PROMPT,
-    TEMPERATURES,
-)
+from app.config import RESULTS_DIR
 from app.prompts import PROMPTS
 from app.schemas import UniversalResponse
 from app.services.inference import run_inference_with_retry
@@ -17,23 +13,24 @@ HEADERS = [
     "output_tokens", "cpu_percent", "ram_mb", "vram_mb"
 ]
 
-def create_results_file(model_name: str):
-    """Create the timestamped CSV file used by this benchmark run."""
+def create_results_file():
+    """Return the timestamped CSV path shared by every model in one benchmark run."""
     os.makedirs(RESULTS_DIR, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    return os.path.join(RESULTS_DIR, f"benchmark_phase2_attempts_{model_name}_{timestamp}.csv")
+    return os.path.join(RESULTS_DIR, f"benchmark_phase2_attempts_{timestamp}.csv")
 
-def run_benchmark_for_model(model_name: str):
-    """Run all prompts across temperatures for a specific model."""
-    csv_filename = create_results_file(model_name)
+def run_benchmark_for_model(model_name: str, csv_filename: str, temperatures: list[float], runs_per_prompt: int):
+    """Run all prompts at the given temperatures for a specific model, appending to the run's CSV."""
     print(f"Starting Phase 2 Benchmark for model: {model_name}")
     print(f"Results will be saved to: {csv_filename}\n")
-    
-    with open(csv_filename, mode="w", newline="", encoding="utf-8") as file:
+
+    with open(csv_filename, mode="a", newline="", encoding="utf-8") as file:
         writer = csv.DictWriter(file, fieldnames=HEADERS)
-        writer.writeheader()
-        
-        for temp in TEMPERATURES:
+        # Append mode: the first model creates the file, later models must not repeat the header.
+        if file.tell() == 0:
+            writer.writeheader()
+
+        for temp in temperatures:
             print(f"\n{'='*60}")
             print(f"TESTING TEMPERATURE: {temp} ON MODEL: {model_name}")
             print(f"{'='*60}")
@@ -41,8 +38,8 @@ def run_benchmark_for_model(model_name: str):
             for prompt_id, prompt_text in PROMPTS.items():
                 print(f"\n[Prompt {prompt_id}]: {prompt_text}")
                 
-                for run in range(1, RUNS_PER_PROMPT + 1):
-                    print(f"\n  --- Run {run}/{RUNS_PER_PROMPT} ---")
+                for run in range(1, runs_per_prompt + 1):
+                    print(f"\n  --- Run {run}/{runs_per_prompt} ---")
                     
                     result = run_inference_with_retry(
                         model=model_name, 

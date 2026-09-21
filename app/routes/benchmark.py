@@ -2,6 +2,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
 from app.dependencies import get_benchmark_service, get_metrics_repository
 from app.repositories.base import IMetricsRepository
+from app.schemas import BenchmarkRequest
 from app.services.benchmark import BenchmarkService
 from app.state import AppState, get_app_state
 
@@ -12,12 +13,15 @@ router = APIRouter()
 def start_benchmark_endpoint(
     background_tasks: BackgroundTasks,
     state: AppState = Depends(get_app_state),
-    service: BenchmarkService = Depends(get_benchmark_service)
+    service: BenchmarkService = Depends(get_benchmark_service),
+    request: BenchmarkRequest | None = None
 ):
     if state.benchmark_running:
         raise HTTPException(status_code=400, detail="A benchmark is already running.")
 
-    background_tasks.add_task(service.run_pipeline)
+    # Built here so a bad request gets its 400 now instead of failing in the background.
+    plan = service.build_plan(request)
+    background_tasks.add_task(service.run_pipeline, plan)
     return {"status": "Benchmark initiated in the background."}
 
 
