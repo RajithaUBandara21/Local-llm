@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local AI Assistant Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; padding: 20px; }
+        .chat-box { height: 350px; overflow-y: auto; background: white; padding: 15px; border: 1px solid #dee2e6; border-radius: 5px; margin-bottom: 10px; }
+        .message { margin-bottom: 10px; padding: 10px; border-radius: 5px; }
+        .user-msg { background-color: #e9ecef; text-align: right; }
+        .bot-msg { background-color: #d1e7dd; text-align: left; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 class="mb-4">🧠 Local AI Assistant & Benchmark Dashboard</h2>
+    
+    <div class="row">
+        <!-- LEFT COLUMN: Settings & Benchmarks -->
+        <div class="col-md-4">
+            
+            <!-- 1. HEALTH CHECK COMPONENT -->
+            <div class="card mb-3 shadow-sm border-info">
+                <div class="card-header bg-info text-white fw-bold">System Health</div>
+                <div class="card-body text-center">
+                    <h4 id="apiStatusText" class="text-secondary mb-1">Checking...</h4>
+                    <p class="text-muted small mb-3" id="apiStatusDetails">Pinging server...</p>
+                    <button class="btn btn-outline-info w-100" onclick="checkHealth()">Run Health Check</button>
+                </div>
+            </div>
+
+            <!-- 2. MODEL SETTINGS -->
+            <div class="card mb-3 shadow-sm">
+                <div class="card-header fw-bold">Hardware & Model Settings</div>
+                <div class="card-body">
+                    <label class="small fw-bold">Active Model:</label>
+                    <div class="input-group mb-3">
+                        <input type="text" id="modelInput" class="form-control" value="llama3.2">
+                        <button class="btn btn-outline-primary" onclick="changeModel()">Load</button>
+                    </div>
+
+                    <label class="small fw-bold">Temperature (<span id="tempValue">0.7</span>):</label>
+                    <input type="range" class="form-range" id="tempSlider" min="0" max="2" step="0.1" value="0.7" onchange="changeTemp()">
+                </div>
+            </div>
+
+            <!-- 3. METRIC REPORT GETTING COMPONENT -->
+            <div class="card mb-3 shadow-sm">
+                <div class="card-header fw-bold">Benchmark Reports</div>
+                <div class="card-body">
+                    <button class="btn btn-danger w-100 mb-3" onclick="startBenchmark()">▶ Start Sequential Benchmark</button>
+                    <hr>
+                    <p class="small text-muted mb-2">Fetch and export the latest benchmark data.</p>
+                    <button class="btn btn-success w-100 mb-2" onclick="getMetrics()">Get Metric Report</button>
+                    <button class="btn btn-outline-secondary w-100" id="downloadCsvBtn" style="display: none;" onclick="downloadCsv()">⬇ Download CSV Report</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN: Chat Interface & Metrics Table -->
+        <div class="col-md-8">
+            <div class="card mb-3 shadow-sm">
+                <div class="card-header fw-bold">Chat Interface</div>
+                <div class="card-body">
+                    <div class="chat-box" id="chatBox"></div>
+                    <div class="input-group">
+                        <input type="text" id="chatInput" class="form-control" placeholder="Ask the model something...">
+                        <button class="btn btn-primary" onclick="sendChat()">Send</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-header fw-bold">Latest Metric Report Table</div>
+                <div class="card-body text-center" id="metricsDisplay">
+                    <span class="text-muted">Click "Get Metric Report" to load the latest benchmark data.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_URL = "http://127.0.0.1:8000";
+    let currentMetricsData = null; // Stores data for CSV download
+
+    // 1. Health Check Logic
+    async function checkHealth() {
+        const statusText = document.getElementById("apiStatusText");
+        const statusDetails = document.getElementById("apiStatusDetails");
+        
+        statusText.innerHTML = "Checking...";
+        statusText.className = "text-secondary mb-1";
+        statusDetails.innerText = "Waiting for response...";
+
+        const startTime = Date.now();
+        try {
+            const res = await fetch(`${API_URL}/health`);
+            const data = await res.json();
+            const latency = Date.now() - startTime;
+            
+            statusText.innerHTML = `✅ ONLINE`;
+            statusText.className = "text-success fw-bold mb-1";
+            statusDetails.innerText = `Service: ${data.service} | Latency: ${latency}ms`;
+        } catch (err) {
+            statusText.innerHTML = `❌ OFFLINE`;
+            statusText.className = "text-danger fw-bold mb-1";
+            statusDetails.innerText = "Error: Cannot reach the FastAPI server.";
+        }
+    }
+
+    // Run health check immediately when the page loads
+    window.onload = checkHealth;
+
+    // 2. Chat Logic
+    async function sendChat() {
+        const input = document.getElementById("chatInput");
+        const prompt = input.value;
+        if (!prompt) return;
+
+        const chatBox = document.getElementById("chatBox");
+        chatBox.innerHTML += `<div class="message user-msg"><b>You:</b> ${prompt}</div>`;
+        input.value = "";
+        chatBox.innerHTML += `<div class="message bot-msg" id="loadingMsg"><i>Generating...</i></div>`;
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        try {
+            const res = await fetch(`${API_URL}/api/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: prompt })
+            });
+            const data = await res.json();
+            document.getElementById("loadingMsg").remove();
+            
+            const reply = data.response || data.message || JSON.stringify(data);
+            chatBox.innerHTML += `<div class="message bot-msg"><b>AI:</b> ${reply}</div>`;
+        } catch (err) {
+            document.getElementById("loadingMsg").innerHTML = `<b>Error:</b> ${err.message}`;
+        }
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    // 3. Change Model
+    async function changeModel() {
+        const model = document.getElementById("modelInput").value;
+        alert(`Requesting switch to ${model}. Please wait a moment.`);
+        try {
+            await fetch(`${API_URL}/api/model/change`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model_name: model })
+            });
+            alert(`Model successfully switched to ${model}`);
+        } catch (err) {
+            alert("Failed to switch model.");
+        }
+    }
+
+    // 4. Change Temperature
+    async function changeTemp() {
+        const temp = document.getElementById("tempSlider").value;
+        document.getElementById("tempValue").innerText = temp;
+        await fetch(`${API_URL}/api/settings/temperature`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ temperature: parseFloat(temp) })
+        });
+    }
+
+    // 5. Start Benchmark
+    async function startBenchmark() {
+        try {
+            const res = await fetch(`${API_URL}/api/benchmark/start`, { method: 'POST' });
+            const data = await res.json();
+            alert(data.status || data.detail);
+        } catch (err) {
+            alert("Failed to start benchmark.");
+        }
+    }
+
+    // 6. Get Metrics
+    async function getMetrics() {
+        const display = document.getElementById("metricsDisplay");
+        display.innerHTML = "Fetching report...";
+        
+        try {
+            const res = await fetch(`${API_URL}/api/benchmark/metrics`);
+            const data = await res.json();
+            
+            if (data.error) {
+                display.innerHTML = `<span class="text-danger fw-bold">${data.error}</span>`;
+                return;
+            }
+
+            // Save data for the CSV download button
+            currentMetricsData = data.data;
+            document.getElementById("downloadCsvBtn").style.display = "block";
+
+            let html = `<div class="text-start mb-2"><strong>Source File:</strong> ${data.latest_benchmark_file}</div>`;
+            html += `<table class="table table-sm table-striped table-bordered text-start" style="font-size: 0.9em;">
+                        <thead class="table-dark"><tr>
+                            <th>Model</th><th>Prompt ID</th><th>Temp</th><th>TTFT (s)</th><th>Latency (s)</th><th>Tokens/s</th>
+                        </tr></thead><tbody>`;
+            
+            data.data.forEach(row => {
+                html += `<tr>
+                    <td>${row.model}</td>
+                    <td>${row.prompt_id}</td>
+                    <td>${row.temperature}</td>
+                    <td>${parseFloat(row.ttft_sec).toFixed(2)}</td>
+                    <td>${parseFloat(row.latency_sec).toFixed(2)}</td>
+                    <td>${parseFloat(row.tokens_per_sec).toFixed(2)}</td>
+                </tr>`;
+            });
+            html += `</tbody></table>`;
+            display.innerHTML = html;
+        } catch (err) {
+            display.innerHTML = `<span class="text-danger">Failed to load metrics. Is the API running?</span>`;
+        }
+    }
+
+    // 7. Download CSV Report
+    function downloadCsv() {
+        if (!currentMetricsData || currentMetricsData.length === 0) return;
+        
+        // Extract headers from the first object
+        const headers = Object.keys(currentMetricsData[0]).join(",");
+        
+        // Extract row values
+        const rows = currentMetricsData.map(row => {
+            return Object.values(row).map(val => `"${val}"`).join(",");
+        }).join("\n");
+        
+        const csvContent = headers + "\n" + rows;
+        
+        // Create an invisible download link and click it
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = 'metric_report_export.csv';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+    }
+</script>
+</body>
+</html>

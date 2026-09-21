@@ -5,11 +5,28 @@ import requests
 from abc import ABC, abstractmethod
 from typing import Dict, Any, List
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from config import MODELS, RESULTS_DIR, OLLAMA_URL
 from benchmark import run_benchmark_for_model
 
+app = FastAPI()
+
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://your-production-domain.com"
+]
+
+# Add this block to allow your frontend to communicate with the API
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins= origins,  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allows all headers
+)
 
 
 if __name__ == "__main__":
