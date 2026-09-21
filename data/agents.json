@@ -1,0 +1,13 @@
+{
+  "agents": [
+    {"id": "asha", "name": "Asha"},
+    {"id": "ben", "name": "Ben"},
+    {"id": "chen", "name": "Chen"},
+    {"id": "dana", "name": "Dana"}
+  ],
+  "mailboxes": {
+    "support": ["asha", "ben", "chen", "dana"],
+    "refunds": ["asha", "ben"],
+    "deliveries": ["chen", "dana"]
+  }
+}

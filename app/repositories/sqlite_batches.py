@@ -1,12 +1,10 @@
 import json
-import sqlite3
-from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterator
 
 from app.repositories.base import IBatchRepository
-from app.schemas import BatchStatus, LoadedEmail, StoredEmail, TriageResponse
+from app.repositories.sqlite_connection import connect
+from app.schemas import BatchStatus, LoadedEmail, MailboxEmail, StoredEmail, TriageResponse, TriageResult
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS batches (
@@ -69,8 +67,40 @@ ORDER BY b.id DESC
 """
 
 
+# A NULL mailbox never equals the parameter, so an email without one is never returned.
+MAILBOX_EMAILS_QUERY = """
+SELECT e.id, e.batch_id, e.mailbox, e.sender, e.subject, e.body_clean, e.received_at,
+       r.status, r.model, r.attempts, r.latency_sec, r.category, r.priority, r.summary,
+       r.suggested_reply, r.confidence, r.flags, r.flag_reason, r.failure_reason
+FROM emails e
+LEFT JOIN triage_results r ON r.email_id = e.id
+WHERE e.mailbox = ? {batch_filter}
+ORDER BY e.id
+"""
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _mailbox_email(row) -> MailboxEmail:
+    triage = None
+    if row["status"] is not None:
+        result = None
+        if row["status"] == "ok":
+            result = TriageResult(
+                category=row["category"], priority=row["priority"], summary=row["summary"],
+                suggested_reply=row["suggested_reply"], confidence=row["confidence"],
+                flags=json.loads(row["flags"]), flag_reason=row["flag_reason"],
+            )
+        triage = TriageResponse(
+            status=row["status"], model=row["model"], attempts=row["attempts"],
+            latency_sec=row["latency_sec"], result=result, failure_reason=row["failure_reason"],
+        )
+    return MailboxEmail(
+        id=row["id"], batch_id=row["batch_id"], mailbox=row["mailbox"], sender=row["sender"],
+        subject=row["subject"], body_clean=row["body_clean"], received_at=row["received_at"], triage=triage,
+    )
 
 
 class SQLiteBatchRepository(IBatchRepository):
@@ -79,20 +109,8 @@ class SQLiteBatchRepository(IBatchRepository):
     def __init__(self, path: str | Path):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        with self._connect() as db:
+        with connect(self.path) as db:
             db.executescript(SCHEMA)
-
-    @contextmanager
-    def _connect(self) -> Iterator[sqlite3.Connection]:
-        # A long timeout lets a status read wait out the worker's short write transactions.
-        connection = sqlite3.connect(self.path, timeout=30)
-        try:
-            connection.row_factory = sqlite3.Row
-            connection.execute("PRAGMA foreign_keys = ON")
-            with connection:
-                yield connection
-        finally:
-            connection.close()
 
     def create_batch(self, source_file: str, emails: list[LoadedEmail]) -> int:
         rows = [
@@ -102,7 +120,7 @@ class SQLiteBatchRepository(IBatchRepository):
             )
             for email in emails
         ]
-        with self._connect() as db:
+        with connect(self.path) as db:
             cursor = db.execute(
                 "INSERT INTO batches (source_file, total, status, created_at) VALUES (?, ?, 'running', ?)",
                 (source_file, len(emails), _now()),
@@ -116,17 +134,17 @@ class SQLiteBatchRepository(IBatchRepository):
         return batch_id
 
     def get_batch(self, batch_id: int) -> BatchStatus | None:
-        with self._connect() as db:
+        with connect(self.path) as db:
             row = db.execute(BATCH_QUERY.format(where="WHERE b.id = ?"), (batch_id,)).fetchone()
         return BatchStatus(**row) if row else None
 
     def list_batches(self) -> list[BatchStatus]:
-        with self._connect() as db:
+        with connect(self.path) as db:
             rows = db.execute(BATCH_QUERY.format(where="")).fetchall()
         return [BatchStatus(**row) for row in rows]
 
     def pending_emails(self, batch_id: int) -> list[StoredEmail]:
-        with self._connect() as db:
+        with connect(self.path) as db:
             rows = db.execute(
                 "SELECT e.id, e.mailbox, e.sender, e.subject, e.body_clean, e.received_at FROM emails e "
                 "LEFT JOIN triage_results r ON r.email_id = e.id "
@@ -138,7 +156,7 @@ class SQLiteBatchRepository(IBatchRepository):
     def save_result(self, email_id: int, response: TriageResponse) -> None:
         result = response.result
         now = _now()
-        with self._connect() as db:
+        with connect(self.path) as db:
             db.execute(
                 "INSERT OR REPLACE INTO triage_results (email_id, model, status, attempts, latency_sec, "
                 "category, priority, summary, suggested_reply, confidence, flags, flag_reason, "
@@ -162,7 +180,14 @@ class SQLiteBatchRepository(IBatchRepository):
             )
 
     def mark_completed(self, batch_id: int) -> None:
-        with self._connect() as db:
+        with connect(self.path) as db:
             db.execute(
                 "UPDATE batches SET status = 'completed', finished_at = ? WHERE id = ?", (_now(), batch_id)
             )
+
+    def list_mailbox_emails(self, mailbox: str, batch_id: int | None = None) -> list[MailboxEmail]:
+        sql = MAILBOX_EMAILS_QUERY.format(batch_filter="" if batch_id is None else "AND e.batch_id = ?")
+        params = (mailbox,) if batch_id is None else (mailbox, batch_id)
+        with connect(self.path) as db:
+            rows = db.execute(sql, params).fetchall()
+        return [_mailbox_email(row) for row in rows]

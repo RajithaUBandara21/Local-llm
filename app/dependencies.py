@@ -5,9 +5,11 @@ from fastapi import Depends
 from app.clients.base import ILLMClient
 from app.clients.ollama import OllamaClient
 from app.config import DATABASE_PATH, MAILBOX_DIR, OLLAMA_GENERATE_URL, OLLAMA_PS_URL, RESULTS_DIR
-from app.repositories.base import IBatchRepository, IMetricsRepository
+from app.repositories.base import IAccessRepository, IBatchRepository, IMetricsRepository
 from app.repositories.csv_metrics import CSVMetricsRepository
+from app.repositories.sqlite_access import SQLiteAccessRepository
 from app.repositories.sqlite_batches import SQLiteBatchRepository
+from app.services.access import AccessService
 from app.services.assistant import AssistantService
 from app.services.batch import BatchService
 from app.services.benchmark import BenchmarkService
@@ -54,3 +56,14 @@ def get_batch_service(
     state: AppState = Depends(get_app_state)
 ) -> BatchService:
     return BatchService(repository, TriageService(client, state), state, Path(MAILBOX_DIR))
+
+
+def get_access_repository() -> IAccessRepository:
+    return SQLiteAccessRepository(DATABASE_PATH)
+
+
+def get_access_service(
+    access: IAccessRepository = Depends(get_access_repository),
+    batches: IBatchRepository = Depends(get_batch_repository)
+) -> AccessService:
+    return AccessService(access, batches)

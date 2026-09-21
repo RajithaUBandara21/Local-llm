@@ -30,7 +30,8 @@ Bootstrap dashboard prototype that calls the API.
 `app/` is the package; each module has one responsibility and dependencies point
 inward (routes, then services, then interfaces).
 
-- `app/main.py` - FastAPI app, CORS, routers, and the `python -m app.main` runner
+- `app/main.py` - FastAPI app, CORS, routers, the lifespan that seeds the agent
+  directory (`app/startup.py`), and the `python -m app.main` runner
 - `app/config.py` - the only module that reads `.env` or the environment; Ollama
   URL and fixed tuning constants (models, temperatures, retries, triage attempts,
   timeout, and body cap, results dir)
@@ -41,24 +42,28 @@ inward (routes, then services, then interfaces).
 - `app/state.py` - in-memory `AppState`
 - `app/dependencies.py` - `Depends` providers, the one place concrete
   implementations are chosen
-- `app/routes/` - HTTP handlers only (`assistant`, `batches`, `benchmark`, `health`,
-  `triage`)
-- `app/services/` - business rules (`assistant`, `batch`, `benchmark`, `triage`), the benchmark
+- `app/routes/` - HTTP handlers only (`access`, `assistant`, `batches`, `benchmark`,
+  `health`, `triage`)
+- `app/services/` - business rules (`access`, `assistant`, `batch`, `benchmark`, `triage`), the benchmark
   runner, streaming inference with schema validation and retry,
   `output_validator`, and `model_loading` (unloads every loaded model except the
   one about to be used)
 - `app/clients/` - `ILLMClient` (its `generate` takes an optional JSON schema and
   timeout; a timeout raises `LLMTimeoutError`) and `OllamaClient`
 - `app/repositories/` - `IMetricsRepository` and `CSVMetricsRepository`;
-  `IBatchRepository` and `SQLiteBatchRepository` (schema, results, decision log)
+  `IBatchRepository` and `SQLiteBatchRepository` (schema, results, decision log,
+  mailbox reads); `IAccessRepository` and `SQLiteAccessRepository` (agents,
+  assignments, denial log); `sqlite_connection` (the shared connection helper)
 - `app/loaders/` - mailbox file loaders: `IEmailLoader` and `EmailLoadError`,
   `CsvEmailLoader` and `MboxEmailLoader`, the body `cleaner`, and the extension
-  `factory`
+  `factory`; `seed_loader` (`load_seed`, `SeedError`) for `data/agents.json`
 - `app/resource_monitor.py` - CPU, RAM, and VRAM sampling for the Ollama process tree
 - `tests/` - pytest unit tests; `pytest.ini` puts the project root on the import path
 - `results/` - benchmark CSV output (timestamped per model and run)
 - `data/` - `northport_emails.csv`, 100 labeled synthetic support emails (ground
-  truth for triage evaluation), and a README with the columns and labeling rules
+  truth for triage evaluation), a README with the columns and labeling rules, and
+  `agents.json`, the seed for the agents, mailboxes, and assignments (loaded into
+  SQLite at start-up; a bad file stops the server from starting)
 - `.env.example` - tracked list of settings; copy to the git-ignored `.env`
 - `docs/` - written deliverables: `discovery-brief.md` and `architecture.md`
 - `Front end/prototype.html` - static dashboard prototype
@@ -140,7 +145,9 @@ temporary directories), the `.env` config loader, the prompt switch,
 `AssistantService`, `BenchmarkService`, `unload_others` in
 `app/services/model_loading.py`, `SQLiteBatchRepository` (real SQLite files in
 temporary directories), `BatchService` (crash and resume, guards including
-overlapping starts, file-name checks), the email cleaner, `CsvEmailLoader`,
+overlapping starts, file-name checks), the seed loader, `SQLiteAccessRepository`,
+`AccessService` (401 and 403 paths, denial logging, exact agent matching), start-up
+seeding, the email cleaner, `CsvEmailLoader`,
 `MboxEmailLoader`, and the loader factory (against temporary files), and the
 benchmark, triage, and batch route functions (called directly with fakes, since
 `httpx` for `TestClient` is not installed). Triage is covered by the schema rules, the

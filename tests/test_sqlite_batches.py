@@ -210,3 +210,56 @@ def test_values_are_bound_not_formatted_into_sql(repo):
 
     assert repo.pending_emails(batch_id)[0].subject == "x'); DROP TABLE emails; --"
     assert rows(repo, "SELECT COUNT(*) AS n FROM emails")[0]["n"] == 1
+
+
+def test_a_mailbox_read_returns_only_that_mailbox_in_email_order(repo):
+    batch_id = repo.create_batch(
+        "mail.csv",
+        [make_email(1, "support"), make_email(2, "refunds"), make_email(3, "support"), make_email(4, None)],
+    )
+
+    emails = repo.list_mailbox_emails("support")
+
+    assert [email.subject for email in emails] == ["Subject 1", "Subject 3"]
+    assert {email.mailbox for email in emails} == {"support"}
+    assert {email.batch_id for email in emails} == {batch_id}
+    assert repo.list_mailbox_emails("nowhere") == []
+
+
+def test_an_email_with_no_mailbox_is_never_returned(repo):
+    repo.create_batch("mail.mbox", [make_email(1, None)])
+
+    assert repo.list_mailbox_emails("None") == []
+    assert repo.list_mailbox_emails("") == []
+
+
+def test_a_mailbox_read_can_be_narrowed_to_one_batch(repo):
+    first = repo.create_batch("a.csv", [make_email(1, "support")])
+    second = repo.create_batch("b.csv", [make_email(2, "support")])
+
+    assert [email.subject for email in repo.list_mailbox_emails("support", second)] == ["Subject 2"]
+    assert [email.subject for email in repo.list_mailbox_emails("support", first)] == ["Subject 1"]
+    assert len(repo.list_mailbox_emails("support")) == 2
+    assert repo.list_mailbox_emails("support", 999) == []
+
+
+def test_a_mailbox_read_rebuilds_each_stored_outcome(repo):
+    batch_id = repo.create_batch("mail.csv", [make_email(n, "support") for n in range(1, 5)])
+    ok, review, failed, unprocessed = repo.pending_emails(batch_id)
+    repo.save_result(ok.id, ok_response(flags=["stale_context"], flag_reason="Old order.", confidence=0.6))
+    repo.save_result(review.id, failed_response("needs_review", "Invalid model output after 2 attempts: x"))
+    repo.save_result(failed.id, failed_response())
+
+    emails = repo.list_mailbox_emails("support")
+
+    by_id = {email.id: email for email in emails}
+    assert by_id[ok.id].triage.status == "ok"
+    assert by_id[ok.id].triage.result.flags == ["stale_context"]
+    assert by_id[ok.id].triage.result.category == "delivery"
+    assert by_id[ok.id].triage.latency_sec == 1.25
+    assert by_id[review.id].triage.status == "needs_review"
+    assert by_id[review.id].triage.result is None
+    assert by_id[review.id].triage.failure_reason.startswith("Invalid model output")
+    assert by_id[failed.id].triage.status == "failed"
+    assert by_id[failed.id].triage.attempts == 1
+    assert by_id[unprocessed.id].triage is None

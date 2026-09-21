@@ -126,3 +126,20 @@ class BatchStatus(BaseModel):
     failed: int
     created_at: datetime
     finished_at: datetime | None = None
+
+
+class Agent(BaseModel):
+    id: NonBlankText
+    name: NonBlankText
+
+
+class Seed(BaseModel):
+    """Agents and which of them may read each mailbox, as loaded from the seed file."""
+    agents: list[Agent]
+    assignments: dict[str, list[str]]
+
+
+class MailboxEmail(StoredEmail):
+    """An email as an agent sees it: its batch and the stored triage outcome, if it has one yet."""
+    batch_id: int
+    triage: TriageResponse | None = None

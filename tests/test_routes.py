@@ -4,12 +4,14 @@ import pytest
 from fastapi import BackgroundTasks, HTTPException
 
 from app.repositories.base import IMetricsRepository
+from app.repositories.sqlite_access import SQLiteAccessRepository
 from app.repositories.sqlite_batches import SQLiteBatchRepository
 from app.routes.benchmark import (
     get_benchmark_status_endpoint,
     get_dashboard_metrics_endpoint,
     start_benchmark_endpoint,
 )
+from app.routes.access import list_agents_endpoint, list_mailbox_emails_endpoint, list_mailboxes_endpoint
 from app.routes.batches import (
     create_batch_endpoint,
     get_batch_endpoint,
@@ -18,7 +20,8 @@ from app.routes.batches import (
 )
 from app.routes.health import health_check
 from app.routes.triage import triage_endpoint
-from app.schemas import BatchRequest, BenchmarkRequest, BenchmarkSetting, TriageRequest
+from app.schemas import Agent, BatchRequest, BenchmarkRequest, BenchmarkSetting, LoadedEmail, Seed, TriageRequest
+from app.services.access import AccessService
 from app.services.batch import BatchService
 from app.services.benchmark import BenchmarkService
 from app.services.triage import TriageService
@@ -220,3 +223,50 @@ def test_a_benchmark_cannot_start_while_a_batch_is_running():
     assert error.value.status_code == 400
     assert "batch" in error.value.detail
     assert tasks.tasks == []
+
+
+def make_access_service(tmp_path):
+    path = tmp_path / "triage.db"
+    batches = SQLiteBatchRepository(path)
+    access = AccessService(SQLiteAccessRepository(path), batches)
+    access.seed(Seed(
+        agents=[Agent(id="asha", name="Asha"), Agent(id="chen", name="Chen")],
+        assignments={"support": ["asha", "chen"], "deliveries": ["chen"]},
+    ))
+    batches.create_batch("mail.csv", [LoadedEmail(
+        sender="a@example.com", subject="Parcel", body_clean="Where is it?", received_at=None, mailbox="deliveries",
+    )])
+    return access
+
+
+def test_the_agent_list_needs_no_identity(tmp_path):
+    assert [agent.id for agent in list_agents_endpoint(make_access_service(tmp_path))] == ["asha", "chen"]
+
+
+def test_an_agent_header_is_passed_through_to_the_mailbox_list(tmp_path):
+    service = make_access_service(tmp_path)
+
+    assert list_mailboxes_endpoint("asha", service) == ["support"]
+    assert list_mailboxes_endpoint("chen", service) == ["deliveries", "support"]
+
+
+def test_a_mailbox_read_returns_the_emails_for_an_assigned_agent(tmp_path):
+    service = make_access_service(tmp_path)
+
+    emails = list_mailbox_emails_endpoint("deliveries", None, "chen", service)
+
+    assert [email.subject for email in emails] == ["Parcel"]
+    assert emails[0].triage is None
+
+
+def test_a_mailbox_read_is_refused_for_an_unassigned_agent_and_without_an_identity(tmp_path):
+    service = make_access_service(tmp_path)
+
+    with pytest.raises(HTTPException) as denied:
+        list_mailbox_emails_endpoint("deliveries", None, "asha", service)
+    with pytest.raises(HTTPException) as anonymous:
+        list_mailbox_emails_endpoint("deliveries", None, None, service)
+    with pytest.raises(HTTPException) as unknown:
+        list_mailboxes_endpoint("zed", service)
+
+    assert (denied.value.status_code, anonymous.value.status_code, unknown.value.status_code) == (403, 401, 401)

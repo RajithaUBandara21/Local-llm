@@ -50,7 +50,7 @@ anywhere. The whole path runs on one machine with no external network calls.
 | Batch queue with resume on crash, `POST /api/batches` | `app/services/batch.py`, `app/routes/batches.py` | built |
 | Triage endpoint, `POST /api/triage`, with prompt, validation, one retry, and manual-review fallback | `app/routes/triage.py`, `app/services/triage.py`, `app/prompts.py`, `app/schemas.py` | built |
 | SQLite storage (batches, emails, results) and decision log | `app/repositories/sqlite_batches.py` | built |
-| Simulated identity and mailbox permissions | not yet written | planned |
+| Simulated identity and mailbox permissions (`X-Agent-Id` header, seed file, denial log) | `app/services/access.py`, `app/routes/access.py`, `app/repositories/sqlite_access.py`, `app/loaders/seed_loader.py`, `data/agents.json` | built |
 | Agent review page | not yet written | planned |
 | Benchmark dashboard | not yet written | planned |
 | Docker Compose deployment with structured logs | not yet written | planned |
@@ -82,8 +82,10 @@ chosen in one place, `app/dependencies.py`. Triage follows the same shape.
    the manual review queue itself is `planned`
 6. The result and a decision log entry (email id, model, latency, outcome) are
    written to SQLite in one transaction. `built`
-7. The agent sees only the mailboxes assigned to them and approves, edits, or
-   rejects each draft. `planned`
+7. The agent sees only the mailboxes assigned to them (`GET /api/mailboxes` and
+   `GET /api/mailboxes/{mailbox}/emails`, with the agent in the `X-Agent-Id`
+   header); the server refuses anything else and logs the denial. `built`. Approving,
+   editing, or rejecting each draft is `planned`
 
 ## Output schema
 
@@ -125,8 +127,11 @@ levels the higher one wins, and spam is always low.
 
 - **Permissions:** each agent sees only assigned mailboxes. The seed data has
   four agents and three mailboxes: support (all four), refunds (two agents), and
-  deliveries (two agents). The check is on the server, and denials are logged.
-  `planned`
+  deliveries (two agents). They come from `data/agents.json` and are loaded into
+  SQLite at start-up. The client claims an agent in the `X-Agent-Id` header (there
+  are no passwords), and the check is on the server: a missing or unknown agent
+  gets 401, and an unassigned or nonexistent mailbox gets the same 403 with no
+  data and a row in `access_denials`. `built`
 - **Retries:** triage makes two attempts in total, meaning one retry. In
   `app/config.py`, `MAX_RETRIES` is 3 and counts total attempts, and it applies
   to the benchmark path today. Triage uses its own `TRIAGE_MAX_ATTEMPTS`, set to

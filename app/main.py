@@ -1,9 +1,19 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routes import assistant, batches, benchmark, health, triage
+from app.routes import access, assistant, batches, benchmark, health, triage
+from app.startup import seed_directory
 
-app = FastAPI(title="SOLID AI Assistant & Benchmark API")
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    seed_directory()
+    yield
+
+
+app = FastAPI(title="SOLID AI Assistant & Benchmark API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -13,6 +23,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(access.router)
 app.include_router(assistant.router)
 app.include_router(batches.router)
 app.include_router(benchmark.router)
