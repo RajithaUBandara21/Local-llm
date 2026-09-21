@@ -1,4 +1,6 @@
-from pydantic import BaseModel, Field
+from datetime import datetime, timezone
+
+from pydantic import BaseModel, Field, field_validator
 
 
 class UniversalResponse(BaseModel):
@@ -28,3 +30,22 @@ class BenchmarkSetting(BaseModel):
 class BenchmarkRequest(BaseModel):
     configs: list[BenchmarkSetting] | None = None
     runs_per_prompt: int | None = None
+
+
+class LoadedEmail(BaseModel):
+    """One cleaned email from a mailbox file, before it is stored or triaged."""
+    sender: str
+    subject: str
+    body_clean: str
+    received_at: datetime | None
+    mailbox: str | None
+
+    @field_validator("received_at")
+    @classmethod
+    def _to_utc(cls, value: datetime | None) -> datetime | None:
+        # Source files mix offsets and naive times; one zone keeps later comparisons safe.
+        if value is None:
+            return None
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
