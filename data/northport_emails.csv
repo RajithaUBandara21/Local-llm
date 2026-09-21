@@ -1,0 +1,427 @@
+id,mailbox,sender,subject,body,received_at,category,priority
+E001,deliveries,priya.nair@example.com,Where is my parcel,"Hi,
+
+Tracking says ""in transit"" since Saturday. Can you tell me where NP48213907 is now and roughly when it will arrive?
+
+Thanks
+Priya",2026-03-02T08:41:00+00:00,delivery,normal
+E002,refunds,d.hollis@example.net,REFUND NOW - order NP-ORD-55102,"I ORDERED SHELVING BRACKETS AND THE BOX ARRIVED CRUSHED WITH HALF THE PARTS MISSING. I sent photos on 25 Feb and was told a refund was ""being processed"".
+
+I want the $184.20 back in my account by Friday 6 March. If it is not there I will file a chargeback with my bank and leave it to them to sort out with you.
+
+D. Hollis",2026-03-02T09:05:00+00:00,refund,urgent
+E003,support,tom.fenwick@example.com,Delivery to Greywater Island?,"Good morning,
+
+We run a small marine supply shop and some of our customers are on Greywater Island (ferry only). Do you deliver there, or only to the mainland terminal? If it is the terminal only, what do you charge to hold a parcel for collection?
+
+Regards,
+Tom Fenwick
+Fenwick Marine Supplies
+555-0134",2026-03-02T10:22:00+00:00,inquiry,normal
+E004,support,rewards-team@northport-claims.test,You have won a NorthPort loyalty reward!!!,"CONGRATULATIONS!!! You have been selected as our 10,000th customer and won a $500 loyalty reward.
+
+Your parcel is on hold. Confirm your card details here to release the reward: http://np-claim.example/verify
+
+Offer expires in 24 HOURS. Do not share this message.",2026-03-02T11:47:00+00:00,spam,low
+E005,refunds,k.mbeki@example.org,Re: Charged twice,"Last four digits are 4417. Both charges of $312.50 are dated 28 Feb, one straight after the other, for the same invoice INV-20418. I only owe you one of them.
+
+Kofi Mbeki
+
+On Mon, 2 Mar 2026 at 10:12, NorthPort Support <support@northport.example> wrote:
+> Hello Kofi, sorry to hear that. Could you send the last four digits of the card and the dates of the charges?
+>
+> Kind regards,
+> Jo",2026-03-03T09:30:00+00:00,billing,high
+E006,deliveries,m.reyes@example.com,Driver left parcel in the rain,"Hello,
+
+Yesterday your driver marked my parcel as delivered and left it on the pavement outside the gate. I was at home the whole time and nobody rang the bell. It rained all afternoon and the box is soaked through, the packaging is falling apart.
+
+I do not think this is an acceptable way to treat customers' goods. I would like someone to look at how your drivers are instructed. Tracking number NP52190346.
+
+Marisol Reyes",2026-03-03T13:15:00+00:00,complaint,high
+E007,deliveries,elena.vasquez@example.org,URGENT: chilled order missing NP60418825,"<p>Hello,</p>
+<p>Our order of 12 boxes of chilled product (declared value about $6,400) was due at the Dockside Cafe warehouse yesterday morning. Tracking for NP60418825 has shown ""exception - awaiting depot"" since Tuesday and nobody has called us.</p>
+<p>The stock has to be kept cold and is only good until Thursday. We need to know today whether it is coming or whether we have to reorder.</p>
+<p>Regards,<br>Elena Vasquez<br>Dockside Cafe</p>",2026-03-03T14:02:00+00:00,delivery,urgent
+E008,support,j.abara@example.com,Thank you!,"Just wanted to say thank you. Your driver Marcus carried my sofa up three flights of stairs when the lift was out, and was cheerful the whole time. Please pass it on.
+
+Sent from my iPhone",2026-03-03T16:20:00+00:00,other,low
+E009,deliveries,nadia.f@example.net,parcel late,My parcel NP20977341 was due last Wednesday and it still has not arrived. No updates since it left the depot. Can you check please?,2026-03-04T07:58:00+00:00,delivery,high
+E010,support,li.wei@example.com,shipping to Portugal?,"Hi, do you ship internationally? I need to send 3 boxes (about 15 kg each) to Porto. Roughly how much would that be and how long does it take? Thanks!",2026-03-04T09:12:00+00:00,inquiry,normal
+E011,refunds,hannah.ward@example.org,RE: Return NP-RET-3391,"Hello,
+
+I returned the kettle on 20 Feb and your tracking shows it reached your warehouse on 24 Feb. It is now 4 March and there is no refund of $59.90 on my card. Can you tell me where it is?
+
+Hannah Ward
+
+From: NorthPort Refunds <refunds@northport.example>
+Sent: 26 February 2026 11:03
+To: hannah.ward@example.org
+Subject: RE: Return NP-RET-3391
+
+Hi Hannah, we have received your return and it will be processed shortly.",2026-03-04T10:40:00+00:00,refund,high
+E012,support,a.sorensen@example.com,Invoice copy please,"Hello,
+
+Could you send me a PDF copy of invoice INV-20395? Our accountant needs it for the quarter end.
+
+Kind regards,
+Annika Sorensen
+Accounts, Birchfield Dental",2026-03-04T11:05:00+00:00,billing,normal
+E013,support,george.lam@example.net,Re: Re: Re: damaged wardrobe - FOURTH EMAIL,"This is my fourth email about the wardrobe that arrived with a split side panel (order NP-ORD-61077). I have written on 18 Feb, 23 Feb and 28 Feb and have not had a single reply.
+
+If I do not hear from a real person by Monday I will be passing this to my solicitor.
+
+George Lam
+
+> On 28 Feb 2026 George Lam wrote:
+> Third attempt: still no answer about the damaged wardrobe.",2026-03-04T12:30:00+00:00,complaint,urgent
+E014,support,growth@rankbooster.test,Get NorthPort to #1 on Google (guaranteed),"Hi NorthPort Logistics team,
+
+We looked at your website and found 47 critical SEO errors! Our team can put you on page 1 of Google in 30 days, guaranteed, from only $99/month.
+
+Reply to this email for a free audit. To stop receiving these emails reply STOP.
+
+Best,
+Dylan
+RankBooster Growth Team",2026-03-04T14:48:00+00:00,spam,low
+E015,deliveries,sam.okafor@example.org,Change delivery address NP31550218,"Hello, please change the delivery address for NP31550218 to Unit 4, 118 Harbour Road, as I will not be home on Thursday. Same postcode.
+
+Thank you.
+
+--
+Sam Okafor
+sam.okafor@example.org",2026-03-05T08:10:00+00:00,delivery,normal
+E016,refunds,roy.tanaka@example.com,Wrong charge on my last order,"<div>Hi team,</div>
+<div><br></div>
+<div>My last order NP-ORD-88231 was charged like this:</div>
+<ul><li>Standard delivery: $14.00</li><li>Express upgrade: $89.00</li></ul>
+<div>I never chose the express upgrade, the checkout said standard. Please correct the charge.</div>
+<div><br></div>
+<div>Thanks</div>
+<div>Roy</div>",2026-03-05T09:33:00+00:00,billing,high
+E017,support,t.brandt@example.net,sunday delivery,hi do you deliver on sundays and what time do you stop delivering in the evening,2026-03-05T10:02:00+00:00,inquiry,normal
+E018,support,olivia.grant@example.com,Terrible customer service on the phone,"I rang your helpline twice yesterday about a missed delivery. The first agent put me on hold for 25 minutes and the second one hung up on me when I explained the problem. I have been a business customer for three years and I have never been treated like this. Please explain what went wrong.
+
+Olivia Grant
+Grant & Sons Florists",2026-03-05T11:50:00+00:00,complaint,high
+E019,refunds,m.rahman@example.net,refund please,"Dear sir or madam,
+
+I did not receive my item from order NP-ORD-70118. The tracking says delivered but I have nothing. I want my money back, 45 euro. Please to refund me to the same card.
+
+Thank you and best regards,
+Mahmoud Rahman",2026-03-05T13:14:00+00:00,refund,high
+E020,support,lena.krause@example.org,Q1 slides,"Hi Jonas,
+
+Attached are the Q1 slides we talked about. Can you have a look before Thursday's call and send me your comments?
+
+Best,
+Lena",2026-03-05T15:41:00+00:00,other,normal
+E021,support,i.sayed@example.com,Business account and monthly invoicing,"Hello,
+
+We ship around 60 parcels a month and would like to move from paying per shipment to a monthly invoice. Do you offer business accounts, and what are the terms (payment period, minimum volume)? Who should I speak to?
+
+Thanks,
+Ibrahim Sayed
+Operations Manager, Halden Print Works
+555-0172",2026-03-06T08:25:00+00:00,inquiry,normal
+E022,deliveries,c.oyelaran@example.org,Delivered to wrong house,Tracking for NP44720915 says delivered yesterday at 14:10 with a photo of a blue door. I live at number 41 and my door is green. The parcel is not here. I think it was left at the wrong house. Can you contact the driver?,2026-03-06T09:02:00+00:00,delivery,high
+E023,support,income-now@bot-signals.invalid,"Earn $5,000 per week from home","Hello friend, my trading bot made me $5,000 last week and it can do the same for you. No experience needed. Reply YES for the private link. Limited spots.",2026-03-06T10:19:00+00:00,spam,low
+E024,refunds,s.papadakis@example.org,Re: Re: refund still missing (3rd email),"Third email now. I first wrote on 24 February and again on 1 March about the $240.00 refund for the cancelled booking (ref NP-ORD-49930). Both times I was told it would arrive in 3 to 5 working days. It has been 10.
+
+Please tell me exactly when the money will be returned.
+
+Stavros Papadakis
+
+> On 1 Mar 2026, NorthPort Refunds wrote:
+> Your refund is being processed and will arrive within 3 to 5 working days.",2026-03-06T11:36:00+00:00,refund,urgent
+E025,refunds,e.kowalska@example.com,Update card on account,"Hello, my card expires this month. How do I update the payment card on my business account? I could not find the option in the portal.
+
+Thanks
+Ewa Kowalska",2026-03-06T13:58:00+00:00,billing,normal
+E026,deliveries,b.osei@example.com,status of NP70012884,"Any update on NP70012884? It has said ""label created"" for three days now.",2026-03-09T07:31:00+00:00,delivery,normal
+E027,refunds,c.dubois@example.net,"Formal notice: refund of $1,260","To whom it may concern,
+
+I cancelled freight booking FB-20871 on 12 February, well before the pickup date, and was told the full $1,260.00 would be returned within 10 working days. It has not been.
+
+This is formal notice that if the full amount is not refunded within 7 days I will start a claim against NorthPort Logistics in the small claims court and I will ask for my costs.
+
+Yours faithfully,
+Catherine Dubois",2026-03-09T08:12:00+00:00,refund,urgent
+E028,support,harper.j@example.org,oversized items,"Hello, what are the maximum dimensions and weight for a single parcel? I have a flat-packed table that is about 190 cm long and 32 kg. Do you take those or do I need a pallet?",2026-03-09T09:20:00+00:00,inquiry,normal
+E029,support,accounts@invoice-desk.test,Overdue invoice #88-1120 - open attachment,"Dear customer,
+
+Your invoice #88-1120 is 14 days overdue. Open the attached file INVOICE_88-1120.zip and enter your password to view the payment details. Failure to act will result in a penalty.
+
+Accounts Department",2026-03-09T10:03:00+00:00,spam,low
+E030,support,n.ivanova@example.com,Formal complaint - missed delivery window,"I am writing to formally complain. I was given a delivery window of 9am to 1pm on Friday and took the day off work to be at home. Nobody came, I got no call and no message, and the tracking simply moved to ""rescheduled"" at 5pm.
+
+This has cost me a day's pay. I would like this on record and I would like to know what you will do to make sure it does not happen again.
+
+Natalia Ivanova",2026-03-09T11:15:00+00:00,complaint,high
+E031,deliveries,w.bergstrom@example.org,Missing box NP81120336,"Two of my three boxes arrived on Friday. The third one, NP81120336, is not here and the tracking shows nothing since it left the depot on Wednesday. It is only books, so it is not an emergency, but I would like it found. Please advise.
+
+Wilhelm Bergstrom",2026-03-09T12:44:00+00:00,delivery,high
+E032,support,newsletter@freight-weekly.example,Freight Weekly: port congestion easing in March,"<div>
+<h2>Freight Weekly</h2>
+<p>This week: port congestion is easing, container rates drop for the second week running, and three things to know about the new customs form.</p>
+<ul><li>Rates: Asia to Europe down 4%</li><li>Rail: new intermodal terminal opens in April</li><li>Customs: what changes on 1 April</li></ul>
+<p>You are receiving this because you subscribed. <a href=""http://freight-weekly.example/unsubscribe"">Unsubscribe</a></p>
+</div>",2026-03-09T13:00:00+00:00,other,low
+E033,refunds,y.haddad@example.com,Statement for February,"Hi, could I get a statement of account for February for our business account? I need the list of charges to reconcile against our books.
+
+Thanks,
+Yara Haddad
+Haddad Bakehouse
+555-0141",2026-03-09T14:26:00+00:00,billing,normal
+E034,refunds,r.singh@example.net,Pickup cancellation fee,"I cancelled pickup booking BK-33127 more than a day ahead, inside the free cancellation window, but I was still charged a $35 cancellation fee. Please refund the $35 to my card.
+
+Get Outlook for iOS",2026-03-10T07:52:00+00:00,refund,high
+E035,support,f.mendoza@example.org,Insurance for valuable items,"Do you offer insurance for high-value items, for example a camera worth about $2,500? How is it priced and is it added at the time of booking?",2026-03-10T08:40:00+00:00,inquiry,normal
+E036,deliveries,e.lindqvist@example.com,Wedding dress not delivered - wedding Saturday!!,"Hello, please help me. The wedding dress for my daughter, parcel NP66208814, was supposed to arrive yesterday. Your card says ""attempted delivery, no one home"" but we were home all day and nobody knocked.
+
+The wedding is this Saturday and the dress still needs a final fitting on Thursday. I need it delivered tomorrow at the latest. Please call me on 555-0163.
+
+Elin Lindqvist",2026-03-10T09:18:00+00:00,delivery,urgent
+E037,support,p.walsh@example.net,Re: Re: damaged again - reporting you,"This is the third time your company has damaged goods I have sent. Each time I have been told it would be looked into and nothing has happened. I am now reporting NorthPort Logistics to the trading standards authority and I will be seeking my costs.
+
+Patrick Walsh
+Walsh Ceramics
+
+> On 3 Mar 2026, NorthPort Support wrote:
+> We are sorry for the damage and have passed your case to the claims team.",2026-03-10T10:05:00+00:00,complaint,urgent
+E038,support,pharma-deals@rx-outlet.invalid,"Cheap meds, no prescription","Hi, save up to 80% on branded pills delivered to your door. No prescription needed. Discreet packaging. Click now: http://rx-outlet.example/buy",2026-03-10T11:11:00+00:00,spam,low
+E039,support,d.kessler@example.org,Suggestion for the tracking page,"Nothing wrong here, in fact the delivery was quick and the driver was polite. One suggestion: your tracking page would be much more useful if it showed an estimated time window on the day, not just ""out for delivery"". Feel free to pass that to whoever looks after the website.
+
+Regards,
+Daniel Kessler",2026-03-10T12:03:00+00:00,other,low
+E040,refunds,i.novak@example.com,"Billed for 4 pallets, only sent 2","Invoice INV-20512 charges us for 4 pallets to the Kestrel Road warehouse but we only shipped 2 (see your own collection note CN-7731 attached). The invoice total is $1,120 and it should be $560. Please issue a corrected invoice so our accounts team can approve it.
+
+Ivana Novak
+Finance, Kestrel Building Supplies",2026-03-10T13:30:00+00:00,billing,high
+E041,support,l.thompson@example.org,Hazardous goods?,"Can I ship paint and aerosol cans with you? Small quantity, 6 tins, all sealed. Are there rules or an extra charge?",2026-03-10T14:40:00+00:00,inquiry,normal
+E042,deliveries,a.demir@example.net,Hold parcel at depot,"Hello, can you hold my parcel NP38810472 at the local depot instead of delivering it? I will collect it on Friday with ID. I have tried the phone line but it is engaged.",2026-03-10T15:22:00+00:00,delivery,normal
+E043,refunds,z.okonkwo@example.com,want refund,my order NP-ORD-91884 never came and its been 3 weeks. i want my money back 76.50. thanks,2026-03-11T07:45:00+00:00,refund,high
+E044,deliveries,h.watanabe@example.org,Your driver shouted at my father,"Your driver shouted at my elderly father when he asked to check the parcel before signing. My father is 81 and was very upset. The driver said ""I have not got time for this"" and walked off with the parcel, then came back and dropped it at the door.
+
+I want the driver to be spoken to. This is not how customers should be treated. Reference NP17765509.
+
+Haruto Watanabe",2026-03-11T08:30:00+00:00,complaint,high
+E045,support,g.alvarez@example.com,Delivery tomorrow?,"Will parcel NP90233417 arrive tomorrow? I need to arrange for someone to be at home in the morning, so a rough time would help.
+
+Gabriela Alvarez",2026-03-11T09:14:00+00:00,delivery,normal
+E046,support,offers@fastfreight-deals.test,Cut your freight costs by 50% today,"Tired of high shipping rates? FastFreight will beat any quote by 50%! Get rates in 60 seconds. Click here to claim your exclusive offer.
+
+Unsubscribe: reply REMOVE",2026-03-11T10:00:00+00:00,spam,low
+E047,support,t.nguyen@example.net,Driver vacancy application,"Dear hiring team,
+
+I am applying for the delivery driver vacancy advertised on your website. I have 6 years of driving experience, a clean licence and I know the north side routes well. My CV is attached.
+
+Kind regards,
+Thao Nguyen",2026-03-11T11:28:00+00:00,other,normal
+E048,support,m.fischer@example.com,Temperature controlled shipping,"Hello, do you offer temperature-controlled shipping for food products (2 to 8 degrees)? If so, what are the minimum order size and lead time?
+
+Martin Fischer",2026-03-11T12:47:00+00:00,inquiry,normal
+E049,refunds,j.carvalho@example.org,Refund of express surcharge,"I paid a $19.99 surcharge for guaranteed next-day delivery on order NP-ORD-73002. It arrived two days later than promised. The service was not delivered, so please refund the surcharge.
+
+Joana Carvalho",2026-03-12T08:05:00+00:00,refund,high
+E050,support,s.aziz@example.com,PO number on invoices,"Could you add our purchase order number (PO-55910) to all future invoices? Our accounts payable team cannot process them without it.
+
+Thanks,
+Samir Aziz
+555-0188",2026-03-12T09:33:00+00:00,billing,normal
+E051,deliveries,f.ramsay@brightwell-training.example,Laptops shown as delivered but not received,"Hello,
+
+Tracking shows our shipment NP12905538 (10 laptops, insured value $14,000) as delivered to reception at 11:20 yesterday. Reception has no record of it and nobody signed for it. The laptops are needed for a training course that starts on Monday morning.
+
+We need someone to trace the delivery and confirm the signature today. Please call me on 555-0119.
+
+Best regards,
+Fiona Ramsay
+Brightwell Training",2026-03-12T09:41:00+00:00,delivery,urgent
+E052,refunds,p.lindholm@example.com,"Need $2,300 back by Wednesday","<p>Hello,</p>
+<p>You cancelled our pallet shipment PS-4471 on 27 February and confirmed a refund of $2,300.00. I still have nothing.</p>
+<p>I need this money back by end of day Wednesday because our rent is due on Thursday. If it has not arrived by then I will dispute the payment with my card provider.<br>
+Please confirm today that it is on its way.</p>
+<p>Petra Lindholm</p>",2026-03-12T10:15:00+00:00,refund,urgent
+E053,support,k.oduya@example.org,Tracking app and SMS alerts,"Do you have a mobile app for tracking parcels, and can I get SMS alerts when a delivery is on its way? I only see email notifications at the moment.",2026-03-12T11:02:00+00:00,inquiry,normal
+E054,support,jobs@homeparcel-earn.invalid,Part-time parcel reshipping job - $800/week,"Work from home! Receive packages at your address, repack them and forward them abroad. Earn $800 per week. No experience needed. Send your full name, address and bank details to get started today.",2026-03-12T11:58:00+00:00,spam,low
+E055,refunds,a.dimitrov@example.net,Two charges same shipment,"Hi, I see two charges of $27.40 on my statement for the same shipment (NP-ORD-30556). Please reverse one of them.
+
+Alex Dimitrov",2026-03-12T13:20:00+00:00,billing,high
+E056,deliveries,r.castellano@example.com,Deliveries keep arriving late,"Every single delivery to our shop this month has been late. Four out of four. Each time the driver says the route is ""too long"" and each time we lose a morning of sales because the stock is not on the shelves when we open.
+
+I was told in January that the route would be reviewed. Nothing has changed. I am not asking for a refund, I am asking for the deliveries to arrive when they are supposed to. Please tell me who is responsible for the route and what is being done.
+
+Rosa Castellano
+Castellano Deli
+555-0126",2026-03-12T14:35:00+00:00,complaint,high
+E057,deliveries,b.yildiz@example.org,missed delivery,I missed the delivery yesterday. When is the next attempt? Parcel NP55008127.,2026-03-13T08:04:00+00:00,delivery,normal
+E058,support,rosa.m@example.com,Thanks for the quick fix,"<div dir=""ltr"">Just a quick note to say thank you to whoever sorted out my missing parcel so fast. It arrived this morning, all in one piece.</div>
+<div dir=""ltr""><br></div>
+<div dir=""ltr"">Best wishes,<br>Rosa</div>",2026-03-13T09:00:00+00:00,other,low
+E059,refunds,v.marchetti@example.net,Return rejected as used - it was not,"Your warehouse rejected my return NP-RET-5520 saying the item ""shows signs of use"". The jacket was unopened, still in the sealed bag with the tags on. I have photos of it before I posted it.
+
+I want my full refund of $129.00. Please review the decision and tell me what you need from me.
+
+Valentina Marchetti
+
+> Your return NP-RET-5520 has been rejected because the item shows signs of use.
+> No refund will be issued.",2026-03-13T09:47:00+00:00,refund,high
+E060,support,c.beaumont@example.com,How do I book a home pickup?,How do I book a pickup from my home for one small package? What is the cut-off time for same day pickup and is there a fee?,2026-03-13T10:31:00+00:00,inquiry,normal
+E061,refunds,h.abdullah@example.org,Billed twice - bank has been told,"I was billed $980.00 twice for shipment SH-90310 (you can see both on invoice INV-20577 and the card statement). I have already phoned my bank. Unless one of the payments is reversed by tomorrow they will start a chargeback, and I would rather not have to do that.
+
+Hamza Abdullah
+Abdullah Trading",2026-03-13T11:12:00+00:00,billing,urgent
+E062,deliveries,j.moreau@example.net,Parcel stuck at sorting hub,"Parcel NP73340061 has been showing ""arrived at sorting hub"" for six days. It was meant to reach me last Friday. Please chase it up and let me know what is going on.",2026-03-13T12:26:00+00:00,delivery,high
+E063,support,sales@packworks-uk.test,Custom branded boxes - 30% off this week,"<p>Hello,</p>
+<p>Make your parcels stand out! PackWorks makes custom branded shipping boxes from just 100 units. <a href=""http://packworks.example/offer"">Take 30% off this week</a>.</p>
+<p>Reply to book a free sample.</p>",2026-03-13T13:05:00+00:00,spam,low
+E064,support,l.ferreira@example.org,Your website booking form,"Your online booking form crashed three times when I tried to book a collection this morning. I lost about an hour re-entering the details and then the chat assistant told me to ""try again later"". A real person on the phone eventually took the booking, but only after a 40 minute wait.
+
+This is not a good experience for a paying customer. Please pass it on to whoever is responsible for the website.
+
+Luis Ferreira",2026-03-13T14:18:00+00:00,complaint,high
+E065,refunds,d.park@example.com,quote vs invoice,"You charge me 120 dollar but quote was 102 dollar. Please check, I have the quote email QT-4408 from you. Please to correct the charge.
+
+Thank you,
+Daeho Park",2026-03-14T08:22:00+00:00,billing,high
+E066,deliveries,n.mukherjee@example.net,Neighbour has my parcel,"Your driver left my parcel NP24418790 with a neighbour and did not leave a card. I only found out four days later when the neighbour knocked on my door. Nobody told me. Could you tell me why no card was left and what your procedure is?
+
+Neha Mukherjee",2026-03-14T09:10:00+00:00,delivery,high
+E067,support,o.lambert@example.com,Saturday delivery instead of Friday,"Hello, could parcel NP60127745 be delivered on Saturday instead of Friday? I am away until Friday evening.
+
+Regards,
+Olivier Lambert",2026-03-14T09:58:00+00:00,delivery,normal
+E068,refunds,g.santos@example.net,Refund of unused prepaid credit,"I closed my business account on 2 March. I had prepaid $200.00 in shipping credit and used only $56.80. Please refund the unused $143.20 to the bank account I paid from.
+
+Gustavo Santos
+Santos & Filho",2026-03-14T10:44:00+00:00,refund,high
+E069,support,e.byrne@example.org,Do you deliver to Ashfield Heath?,"Hi, do you deliver to Ashfield Heath, postcode AH4 2RT? A couple of other couriers say it is out of their area.",2026-03-15T08:17:00+00:00,inquiry,normal
+E070,deliveries,s.kowalczyk@example.com,Driver blocked my driveway for two hours,"Your van blocked my driveway for two hours on Thursday morning while the driver was delivering to the shops down the road. I could not get my car out and missed an appointment. When I knocked on the window he told me to ""wait my turn"".
+
+Please make sure the driver knows this is not acceptable. The van registration was NP-04 KLV.
+
+Stefan Kowalczyk",2026-03-15T09:03:00+00:00,complaint,high
+E071,refunds,u.hassan@example.net,Pay by bank transfer?,"Can I pay by bank transfer instead of card for my next shipment? If yes, please send the bank details and tell me how to make sure the payment is matched to the booking.
+
+Thanks,
+Usman Hassan
+555-0155",2026-03-15T10:15:00+00:00,billing,normal
+E072,support,security@northport-verify.test,Your account has been suspended,"Dear customer,
+
+Your NorthPort account has been suspended due to unusual activity. To restore access verify your identity within 12 hours by entering your login and card number at http://northport-verify.example/login
+
+Security Team",2026-03-15T11:29:00+00:00,spam,low
+E073,refunds,w.chen@example.org,Smashed lamp - refund please,"The lamp I ordered arrived completely smashed (photos attached). I would like a refund of $88.00. I do not want a replacement.
+
+Wendy Chen",2026-03-15T12:40:00+00:00,refund,high
+E074,support,t.jansen@example.net,Interview request for my thesis,"Hello, I am a masters student researching last-mile delivery and would like to interview someone in your operations team for 20 minutes about how you plan routes. I can work around your schedule and will share the finished thesis.
+
+Kind regards,
+Tessa Jansen
+University of Halden",2026-03-15T13:52:00+00:00,other,normal
+E075,support,b.nkosi@example.com,PO box delivery,"Do you deliver to PO boxes, or does it have to be a street address?",2026-03-15T14:21:00+00:00,inquiry,normal
+E076,refunds,a.fontaine@example.com,Third reminder: refund of $415,"<div>Hello,</div>
+<div><br></div>
+<div>This is my third reminder. I asked for a refund of $415.00 for cancelled shipment SH-64802 on 20 February, again on 27 February, and I am writing again today. I have had one automated reply and nothing else.</div>
+<div><br></div>
+<div>Please give me a date when the money will be back in my account.</div>
+<div><br></div>
+<div>Amelie Fontaine</div>",2026-03-16T07:50:00+00:00,refund,urgent
+E077,deliveries,ops@kestrel-glass.example,Pallet delivered smashed - need replacement before Monday,"Our pallet NP-PAL-30144 arrived at the Queensway shop this morning with the shrink wrap torn and about a third of the glassware smashed. The driver would not wait for us to check and the pallet is worth roughly $9,000.
+
+We open a big event order on Monday and need the undamaged pieces and replacements for the rest by Friday at the latest. Please tell us today who is handling the claim and whether a replacement can be sent.
+
+Regards,
+Marcus Webb
+Kestrel Glass
+555-0107",2026-03-16T08:33:00+00:00,delivery,urgent
+E078,support,q.baptiste@example.org,Same day courier?,"Do you offer same day courier inside the city? If yes, what is the cut off time for a morning pickup and roughly what does it cost for a small envelope?",2026-03-16T09:10:00+00:00,inquiry,normal
+E079,support,lottery@intl-prize-draw.invalid,"YOU ARE A WINNER - claim 1,000,000","Your email address has won 1,000,000 in the International Email Lottery. To claim your prize send your full name, phone number and a copy of your passport to our claims agent. Do not tell anyone until the claim is complete.",2026-03-16T09:44:00+00:00,spam,low
+E080,support,bulletin@halden-chamber.example,Halden Chamber of Commerce: March bulletin,"<div>
+<p>Halden Chamber of Commerce</p>
+<p>March bulletin: networking breakfast on the 24th, new rates for the business park, and a reminder that annual membership renewals are due at the end of the month.</p>
+<p>You are receiving this because your company is a member. To change your preferences reply to this message.</p>
+</div>",2026-03-16T10:00:00+00:00,other,low
+E081,support,c.dhillon@example.net,Change of billing address,"Hello, we have moved offices. Please change the billing address on our account to 22 Mill Lane, Halden, HD2 9PQ. The delivery address stays the same.
+
+Thanks,
+Charanjit Dhillon
+Dhillon Logistics Consulting",2026-03-16T10:51:00+00:00,billing,normal
+E082,support,h.lindgren@example.com,Nobody calls me back,"I have now phoned your helpline four times and emailed twice about my missing parcel NP41982263 and nobody has called me back. Each time I am told that a manager will ring me within 24 hours. Nobody has rung. This is completely unacceptable and I want a named person to contact me today.
+
+Hanna Lindgren
+
+> On 9 Mar 2026, NorthPort Support wrote:
+> We have escalated your case and a manager will call you within 24 hours.",2026-03-16T11:37:00+00:00,complaint,urgent
+E083,deliveries,r.moyo@example.org,Leave parcel with concierge,"Can the driver leave parcel NP82006715 with the building concierge if I am out? The desk is staffed until 6pm. Please add that to the delivery notes.
+
+Sent from my iPhone",2026-03-16T12:20:00+00:00,delivery,normal
+E084,refunds,j.eriksson@example.net,Annual account fee charged after closing,"I closed my account inside the 14 day trial and was told nothing would be charged. Yesterday I was billed the $150 annual account fee. Please refund it.
+
+Johan Eriksson",2026-03-16T13:05:00+00:00,refund,high
+E085,support,p.okafor@example.com,Delivery attempts policy,"How many delivery attempts do you make before a parcel is sent back to the sender, and how long will you hold it at the depot?",2026-03-16T14:15:00+00:00,inquiry,normal
+E086,support,info@velocycles.example,Partnership idea,"Hello,
+
+We are a local bike shop with a small courier service for our own repairs. We would like to talk about a possible arrangement where we could drop off parcels at your depot in return for a discount. Is there someone I could speak to about this?
+
+Best regards,
+Jamal Idowu
+Velo Cycles",2026-03-17T08:40:00+00:00,other,normal
+E087,deliveries,k.solberg@example.org,Parcel sent back without a second attempt,"My parcel NP53091846 was marked ""returned to sender"" after one attempt. I had asked on your website to re-deliver on Saturday, and the confirmation email is right here. Nobody came on Saturday. Now the sender says it has been returned and I have to pay again.
+
+Please get the parcel sent back to me.
+
+Kari Solberg",2026-03-17T09:26:00+00:00,delivery,high
+E088,support,m.lopez@example.com,Told two different things,"On Monday your phone agent told me my parcel had been ""handed to the courier"". On Tuesday another agent told me it had never left the warehouse. Which one is true? I have now lost three days and I no longer trust anything I am told.
+
+I want the staff to have accurate information and I want to know what has really happened to order NP-ORD-40219.
+
+Miguel Lopez",2026-03-17T10:12:00+00:00,complaint,high
+E089,support,hello@sitelift-agency.test,A new website for NorthPort,"<p>Hi there,</p>
+<p>We build high-converting websites for logistics companies. Our clients see 3x more enquiries in 60 days. <a href=""http://sitelift.example/case-studies"">See our case studies</a> or reply to book a free 15 minute call.</p>
+<p>The SiteLift team</p>",2026-03-17T11:00:00+00:00,spam,low
+E090,refunds,b.thorne@example.org,Fuel surcharge not in the quote,"Hi,
+
+Invoice INV-20631 has a $65.00 ""fuel surcharge"" on top of the $540.00 all-in price in my quote QT-5120. The quote says ""all inclusive"" and there was no mention of a surcharge. Please remove the surcharge and send a corrected invoice.
+
+Ben Thorne
+
+---------- Forwarded message ---------
+From: NorthPort Sales <sales@northport.example>
+Date: Mon, 2 Mar 2026 at 09:00
+Subject: Your quote QT-5120
+To: b.thorne@example.org
+
+Your all-inclusive quote for the Halden to Marlow collection is $540.00.",2026-03-17T11:47:00+00:00,billing,high
+E091,refunds,ana.reis@example.com,"Missed collection, want my money back","<p>Hello,</p>
+<p>I paid $48.00 for a home pickup on Tuesday between 10 and 12. Nobody came and nobody called. I had to take the parcel to a drop-off point myself.</p>
+<p>Please refund the $48.00 for the pickup I did not get (booking BK-40881).</p>
+<p>Ana Reis</p>",2026-03-17T12:35:00+00:00,refund,high
+E092,support,d.mckay@example.net,Packing service?,"Do you sell packing materials, or do a packing service for fragile items like ceramics? I would prefer someone else to box them properly.",2026-03-17T13:20:00+00:00,inquiry,normal
+E093,deliveries,z.abbas@example.com,Tracking number not found,"I typed NP99120347 into your tracking page and it says ""not found"". I booked the shipment yesterday afternoon and got the confirmation email with that number. Is it just too early to show up?
+
+Zainab Abbas",2026-03-17T14:02:00+00:00,delivery,normal
+E094,deliveries,e.grant@example.org,Will the driver phone before arriving?,"Could you add a note on parcel NP18560423 asking the driver to phone me on 555-0193 about 15 minutes before arriving? I work from the back of the building and cannot hear the door.
+
+Thanks
+Eric Grant",2026-03-18T07:55:00+00:00,delivery,normal
+E095,refunds,y.tanaka@example.net,Cancelled shipment still charged in full,"I asked you on the phone to cancel shipment SH-77120 while it was still sitting at your depot (Monday, about 4pm) and the agent said it was done. I have just been charged the full $310.00.
+
+Please refund the $310.00.
+
+Yuki Tanaka",2026-03-18T08:41:00+00:00,refund,high
+E096,deliveries,o.pereira@example.com,Rude staff at the depot,"I went to the Riverside depot to collect parcel NP90417732 with my ID and your text message. The person at the desk said I was ""in the wrong queue"", sent me away, and the next person said the first one was wrong. I was there for over an hour and then told to come back tomorrow.
+
+The staff were rude and unhelpful. Someone should be trained.
+
+Olga Pereira",2026-03-18T09:30:00+00:00,complaint,high
+E097,support,v.romero@example.org,Tail-lift on vans?,Do your delivery vehicles have a tail-lift? I need to send a 120 kg machine to a unit with no loading dock.,2026-03-18T10:14:00+00:00,inquiry,normal
+E098,support,events@logisticsaiwebinar.test,FREE webinar: Grow your logistics business with AI,"Join our exclusive webinar and discover how AI can 10x your logistics business! Seats are limited. Register now and get a free e-book on automation secrets.
+
+Best,
+Chad
+GrowthAI Events",2026-03-18T11:00:00+00:00,spam,low
+E099,support,happy.customer@example.com,5 stars,"Great service, fast and friendly, will use again. Five stars!",2026-03-18T11:45:00+00:00,other,low
+E100,refunds,s.malik@example.org,Receipt for last payment,"<p>Hello, could you send me a receipt for the $212.00 I paid on 10 March (card ending 2290)? I need it for my expense claim.</p>
+<p>Thanks,<br>Sadia Malik</p>",2026-03-18T12:30:00+00:00,billing,normal

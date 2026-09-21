@@ -51,6 +51,8 @@ inward (routes, then services, then interfaces).
 - `app/resource_monitor.py` - CPU, RAM, and VRAM sampling for the Ollama process tree
 - `tests/` - pytest unit tests; `pytest.ini` puts the project root on the import path
 - `results/` - benchmark CSV output (timestamped per model and run)
+- `data/` - `northport_emails.csv`, 100 labeled synthetic support emails (ground
+  truth for triage evaluation), and a README with the columns and labeling rules
 - `.env.example` - tracked list of settings; copy to the git-ignored `.env`
 - `docs/` - written deliverables: `discovery-brief.md` and `architecture.md`
 - `Front end/prototype.html` - static dashboard prototype
@@ -130,7 +132,8 @@ temporary directories), the `.env` config loader, the prompt switch,
 `app/services/model_loading.py`, the email cleaner, `CsvEmailLoader`,
 `MboxEmailLoader`, and the loader factory (against temporary files), and the
 benchmark route functions (called directly with fakes, since `httpx` for
-`TestClient` is not installed). The shared fake `ILLMClient` is `tests/fakes.py`.
+`TestClient` is not installed). `tests/test_dataset.py` checks the real
+`data/northport_emails.csv` (structure, labels, cleaner round trip). The shared fake `ILLMClient` is `tests/fakes.py`.
 `OllamaClient`, `benchmark_runner`, and `resource_monitor` are not covered. Do not unit test live Ollama,
 `nvidia-smi`, or the static dashboard; verify those by running the app.
 
