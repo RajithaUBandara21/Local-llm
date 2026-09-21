@@ -2,15 +2,15 @@ import csv
 import os
 import requests
 from datetime import datetime
-from config import (
-    PROMPTS, 
-    RESULTS_DIR, 
-    RUNS_PER_PROMPT, 
-    TEMPERATURES, 
-    UniversalResponse,
-    OLLAMA_URL
+from app.config import (
+    OLLAMA_GENERATE_URL,
+    RESULTS_DIR,
+    RUNS_PER_PROMPT,
+    TEMPERATURES,
 )
-from inference import run_inference_with_retry
+from app.prompts import PROMPTS
+from app.schemas import UniversalResponse
+from app.services.inference import run_inference_with_retry
 
 HEADERS = [
     "model", "prompt_id", "temperature", "run", "attempt", 
@@ -30,7 +30,7 @@ def unload_model(model_name: str):
     print(f"\n[RESOURCE OPTIMIZATION] Unloading {model_name} from VRAM...")
     try:
         # Sending keep_alive=0 to Ollama unloads the model immediately
-        requests.post(OLLAMA_URL, json={"model": model_name, "keep_alive": 0})
+        requests.post(OLLAMA_GENERATE_URL, json={"model": model_name, "keep_alive": 0})
         print(f"[RESOURCE OPTIMIZATION] {model_name} successfully unloaded.\n")
     except Exception as e:
         print(f"[RESOURCE OPTIMIZATION] Failed to unload {model_name}: {e}\n")

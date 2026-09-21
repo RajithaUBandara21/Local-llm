@@ -1,0 +1,17 @@
+from app.config import MODELS
+
+
+class AppState:
+    """Holds global application state."""
+
+    def __init__(self):
+        self.active_model: str = MODELS[0] if MODELS else "llama3.2"
+        self.active_temperature: float = 0.7
+        self.benchmark_running: bool = False
+
+
+global_state = AppState()
+
+
+def get_app_state() -> AppState:
+    return global_state

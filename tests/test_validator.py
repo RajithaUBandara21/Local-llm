@@ -1,7 +1,7 @@
 import json
 
-from config import UniversalResponse
-from validator import OutputValidator
+from app.schemas import UniversalResponse
+from app.services.output_validator import OutputValidator
 
 VALID_REPLY = {"reasoning": "step by step", "final_answer": "42", "confidence_score": 0.9}
 

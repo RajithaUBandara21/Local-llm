@@ -26,19 +26,35 @@ Bootstrap dashboard prototype that calls the API.
 
 ## Layout
 
-The flat layout below is being restructured into a modular package; new code
-should follow the modular conventions instead of adding to these files.
+`app/` is the package; each module has one responsibility and dependencies point
+inward (routes, then services, then interfaces).
 
-- `main.py` - FastAPI app: request models, in-memory state, LLM client and metrics
-  repository interfaces and implementations, services, dependency providers, routes
-- `config.py` - Ollama URL, model list, benchmark settings, output schema, prompts
-- `inference.py` - streaming Ollama call with schema validation and retry
-- `validator.py` - Pydantic JSON validation of model output
-- `benchmark.py` - runs prompts across temperatures per model and writes CSV
-- `resource_monitor.py` - CPU, RAM, and VRAM sampling for the Ollama process tree
+- `app/main.py` - FastAPI app, CORS, routers, and the `python -m app.main` runner
+- `app/config.py` - the only module that reads `.env` or the environment; Ollama
+  URL and fixed tuning constants (models, temperatures, retries, results dir)
+- `app/prompts.py` - benchmark prompts and `ACTIVE_PROMPT_IDS`, the switch for
+  which ones run
+- `app/schemas.py` - request models and the `UniversalResponse` LLM schema
+- `app/state.py` - in-memory `AppState`
+- `app/dependencies.py` - `Depends` providers, the one place concrete
+  implementations are chosen
+- `app/routes/` - HTTP handlers only (`assistant`, `benchmark`, `health`)
+- `app/services/` - business rules (`assistant`, `benchmark`), the benchmark
+  runner, streaming inference with schema validation and retry, and
+  `output_validator`
+- `app/clients/` - `ILLMClient` and `OllamaClient`
+- `app/repositories/` - `IMetricsRepository` and `CSVMetricsRepository`
+- `app/resource_monitor.py` - CPU, RAM, and VRAM sampling for the Ollama process tree
 - `tests/` - pytest unit tests; `pytest.ini` puts the project root on the import path
 - `results/` - benchmark CSV output (timestamped per model and run)
+- `.env.example` - tracked list of settings; copy to the git-ignored `.env`
 - `Front end/prototype.html` - static dashboard prototype
+
+## Settings
+
+`OLLAMA_URL` is the Ollama base URL (default `http://localhost:11434`, no path).
+It comes from a real environment variable, then `.env`, then the default, and is
+read only in `app/config.py`.
 
 ## Proportional engineering
 
@@ -62,7 +78,7 @@ and installed dependencies before adding machinery.
 ## Conventions
 
 - `snake_case` for modules, functions, and variables; `PascalCase` for classes;
-  `SCREAMING_SNAKE_CASE` for constants (kept in `config.py`); `I` prefix for
+  `SCREAMING_SNAKE_CASE` for constants (kept in `app/config.py`); `I` prefix for
   abstract interfaces (`ILLMClient`)
 - Type-hint function signatures; use Pydantic models for request bodies and LLM
   output schemas
@@ -88,27 +104,26 @@ Windows, from the project root.
 - Create the environment (once): `python -m venv .venv`
 - Activate it: `.venv\Scripts\activate`
 - Install dependencies: `pip install -r requirements.txt`
-- Dev server: `uvicorn main:app --reload --port 8000` (`http://localhost:8000`,
-  interactive docs at `/docs`, health at `/health`); `python main.py` does the same
+- Dev server: `uvicorn app.main:app --reload --port 8000` (`http://localhost:8000`,
+  interactive docs at `/docs`, health at `/health`); `python -m app.main` does the same
 - Benchmark: start it with `POST /api/benchmark/start`; there is no standalone
   command-line entry point
 - Test: `python -m pytest` (needs no Ollama or GPU)
 - Build: none
 - Lint: none configured
 
-Ollama must be running with the models named in `config.py` available before chat
+Ollama must be running with the models named in `app/config.py` available before chat
 or benchmark calls will succeed.
 
 ## Testing
 
 pytest is set up and the `test` command above is the gate. The suite covers
-`OutputValidator.validate_json`, the retry flow in `inference.py` (with `requests`
-and resource sampling mocked), and `CSVMetricsRepository` (against temporary
-directories). Routes, services, `OllamaClient`, `benchmark.py`, and
-`resource_monitor.py` are not covered yet. Do not unit test live Ollama,
+`OutputValidator.validate_json`, the retry flow in `app/services/inference.py`
+(with `requests` and resource sampling mocked), `CSVMetricsRepository` (against
+temporary directories), the `.env` config loader, the prompt switch,
+`AssistantService`, `BenchmarkService`, and the benchmark route functions (called
+directly with fakes, since `httpx` for `TestClient` is not installed).
+`OllamaClient`, `benchmark_runner`, and `resource_monitor` are not covered. Do not unit test live Ollama,
 `nvidia-smi`, or the static dashboard; verify those by running the app.
-
-Tests import the flat root modules, so the modular restructure must update their
-imports.
 
 No `Verify` command or GitHub workflow exists yet.

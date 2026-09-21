@@ -3,7 +3,7 @@ import os
 
 import pytest
 
-from main import CSVMetricsRepository
+from app.repositories.csv_metrics import CSVMetricsRepository
 
 HEADER = ["model", "prompt_id", "latency_sec"]
 

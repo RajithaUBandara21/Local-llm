@@ -2,9 +2,10 @@ import json
 
 import pytest
 
-import inference
-from config import MAX_RETRIES, UniversalResponse
-from inference import FALLBACK_MESSAGE, run_inference_with_retry
+from app.config import MAX_RETRIES
+from app.schemas import UniversalResponse
+from app.services import inference
+from app.services.inference import FALLBACK_MESSAGE, run_inference_with_retry
 
 MODEL = "test-model"
 PROMPT = "Explain caching."

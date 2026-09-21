@@ -3,9 +3,9 @@ import requests
 import json
 from typing import Type, List, Dict, Any
 from pydantic import BaseModel
-from config import OLLAMA_URL, MAX_RETRIES
-from resource_monitor import capture_process_usage
-from validator import OutputValidator
+from app.config import OLLAMA_GENERATE_URL, MAX_RETRIES
+from app.resource_monitor import capture_process_usage
+from app.services.output_validator import OutputValidator
 
 FALLBACK_MESSAGE = "Unable to generate a valid structured response. Please try again."
 
@@ -37,7 +37,7 @@ def run_inference_with_retry(
         final_metrics = {}
         
         try:
-            response = requests.post(OLLAMA_URL, json=payload, stream=True)
+            response = requests.post(OLLAMA_GENERATE_URL, json=payload, stream=True)
             response.raise_for_status()
             
             # Process the stream to calculate TTFT and build the raw reply
