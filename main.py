@@ -9,24 +9,17 @@ from pydantic import BaseModel
 
 from config import MODELS, RESULTS_DIR, OLLAMA_URL
 from benchmark import run_benchmark_for_model
+app = FastAPI(title="SOLID AI Assistant & Benchmark API")
 
-app = FastAPI()
 
-origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "https://your-production-domain.com"
-]
 
-# Add this block to allow your frontend to communicate with the API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins= origins,  # Allows all origins
+    allow_origins=["*"],  
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods (GET, POST, etc.)
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=["*"],  
+    allow_headers=["*"],  
 )
-
 
 if __name__ == "__main__":
     import uvicorn
@@ -191,7 +184,7 @@ def get_benchmark_service(state: AppState = Depends(get_app_state)) -> Benchmark
 # ==========================================
 # 6. FastAPI Controllers (Routers)
 # ==========================================
-app = FastAPI(title="SOLID AI Assistant & Benchmark API")
+
 
 @app.post("/api/chat")
 def chat_endpoint(
