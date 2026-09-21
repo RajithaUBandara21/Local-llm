@@ -31,19 +31,22 @@ inward (routes, then services, then interfaces).
 
 - `app/main.py` - FastAPI app, CORS, routers, and the `python -m app.main` runner
 - `app/config.py` - the only module that reads `.env` or the environment; Ollama
-  URL and fixed tuning constants (models, temperatures, retries, results dir)
+  URL and fixed tuning constants (models, temperatures, retries, triage attempts,
+  timeout, and body cap, results dir)
 - `app/prompts.py` - benchmark prompts and `ACTIVE_PROMPT_IDS`, the switch for
-  which ones run
-- `app/schemas.py` - request models and the `UniversalResponse` LLM schema
+  which ones run, plus the triage prompt and retry-prompt builders
+- `app/schemas.py` - request models, the `UniversalResponse` benchmark schema,
+  and the triage models (`TriageRequest`, `TriageResult`, `TriageResponse`)
 - `app/state.py` - in-memory `AppState`
 - `app/dependencies.py` - `Depends` providers, the one place concrete
   implementations are chosen
-- `app/routes/` - HTTP handlers only (`assistant`, `benchmark`, `health`)
-- `app/services/` - business rules (`assistant`, `benchmark`), the benchmark
+- `app/routes/` - HTTP handlers only (`assistant`, `benchmark`, `health`, `triage`)
+- `app/services/` - business rules (`assistant`, `benchmark`, `triage`), the benchmark
   runner, streaming inference with schema validation and retry,
   `output_validator`, and `model_loading` (unloads every loaded model except the
   one about to be used)
-- `app/clients/` - `ILLMClient` and `OllamaClient`
+- `app/clients/` - `ILLMClient` (its `generate` takes an optional JSON schema and
+  timeout; a timeout raises `LLMTimeoutError`) and `OllamaClient`
 - `app/repositories/` - `IMetricsRepository` and `CSVMetricsRepository`
 - `app/loaders/` - mailbox file loaders: `IEmailLoader` and `EmailLoadError`,
   `CsvEmailLoader` and `MboxEmailLoader`, the body `cleaner`, and the extension
@@ -131,10 +134,13 @@ temporary directories), the `.env` config loader, the prompt switch,
 `AssistantService`, `BenchmarkService`, `unload_others` in
 `app/services/model_loading.py`, the email cleaner, `CsvEmailLoader`,
 `MboxEmailLoader`, and the loader factory (against temporary files), and the
-benchmark route functions (called directly with fakes, since `httpx` for
-`TestClient` is not installed). `tests/test_dataset.py` checks the real
-`data/northport_emails.csv` (structure, labels, cleaner round trip). The shared fake `ILLMClient` is `tests/fakes.py`.
-`OllamaClient`, `benchmark_runner`, and `resource_monitor` are not covered. Do not unit test live Ollama,
+benchmark and triage route functions (called directly with fakes, since `httpx`
+for `TestClient` is not installed). Triage is covered by the schema rules, the
+prompt builders, `TriageService` (every retry, timeout, and failure branch), and
+`OllamaClient.generate` (with `requests` mocked). `tests/test_dataset.py` checks
+the real `data/northport_emails.csv` (structure, labels, cleaner round trip). The
+shared fake `ILLMClient` is `tests/fakes.py`.
+The other `OllamaClient` methods, `benchmark_runner`, and `resource_monitor` are not covered. Do not unit test live Ollama,
 `nvidia-smi`, or the static dashboard; verify those by running the app.
 
 No `Verify` command or GitHub workflow exists yet.

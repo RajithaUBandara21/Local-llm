@@ -1,6 +1,6 @@
 import requests
 
-from app.clients.base import ILLMClient
+from app.clients.base import ILLMClient, LLMTimeoutError
 
 
 class OllamaClient(ILLMClient):
@@ -10,12 +10,20 @@ class OllamaClient(ILLMClient):
         self.base_url = base_url
         self.ps_url = ps_url
 
-    def generate(self, model: str, prompt: str, temperature: float) -> dict:
+    def generate(
+        self, model: str, prompt: str, temperature: float,
+        schema: dict | None = None, timeout: float | None = None
+    ) -> dict:
         payload = {
             "model": model, "prompt": prompt, "stream": False,
             "options": {"temperature": temperature}
         }
-        response = requests.post(self.base_url, json=payload)
+        if schema is not None:
+            payload["format"] = schema
+        try:
+            response = requests.post(self.base_url, json=payload, timeout=timeout)
+        except requests.Timeout as error:
+            raise LLMTimeoutError(f"No reply from {model} within {timeout} s.") from error
         response.raise_for_status()
         return response.json()
 

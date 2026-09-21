@@ -45,3 +45,11 @@ RUNS_PER_PROMPT = 3
 MAX_RUNS_PER_PROMPT = 10
 MAX_RETRIES = 3
 RESULTS_DIR = "results"
+
+# MAX_RETRIES above belongs to the benchmark and counts total attempts; triage has
+# its own pair so one retry (two attempts) does not change benchmark behavior.
+TRIAGE_MAX_ATTEMPTS = 2
+TRIAGE_TIMEOUT_SEC = 30
+# About 1500 tokens, so the prompt stays inside a small default context window
+# instead of being silently truncated by Ollama.
+TRIAGE_MAX_BODY_CHARS = 6000

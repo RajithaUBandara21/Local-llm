@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from fastapi import BackgroundTasks, HTTPException
 
@@ -8,8 +10,10 @@ from app.routes.benchmark import (
     start_benchmark_endpoint,
 )
 from app.routes.health import health_check
-from app.schemas import BenchmarkRequest, BenchmarkSetting
+from app.routes.triage import triage_endpoint
+from app.schemas import BenchmarkRequest, BenchmarkSetting, TriageRequest
 from app.services.benchmark import BenchmarkService
+from app.services.triage import TriageService
 from app.state import AppState
 from tests.fakes import FakeClient
 
@@ -102,3 +106,28 @@ def test_missing_results_map_to_404():
 
     assert error.value.status_code == 404
     assert error.value.detail == "No benchmark CSV files found."
+
+
+def test_triage_returns_the_service_result_as_a_response():
+    reply = json.dumps({
+        "category": "spam", "priority": "low", "summary": "Unsolicited offer.",
+        "suggested_reply": "No reply needed.", "confidence": 0.95,
+    })
+    service = TriageService(FakeClient(replies=[reply]), AppState())
+
+    response = triage_endpoint(TriageRequest(body="Buy now!"), service)
+
+    assert response.status == "ok"
+    assert response.result.category == "spam"
+    assert response.result.flags == []
+
+
+def test_triage_surfaces_the_benchmark_refusal():
+    state = AppState()
+    state.benchmark_running = True
+    service = TriageService(FakeClient(), state)
+
+    with pytest.raises(HTTPException) as error:
+        triage_endpoint(TriageRequest(body="hello"), service)
+
+    assert error.value.status_code == 400

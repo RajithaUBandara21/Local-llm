@@ -41,14 +41,14 @@ anywhere. The whole path runs on one machine with no external network calls.
 | --- | --- | --- |
 | HTTP API (chat, model switch, temperature, benchmark, health) | `app/routes/`, `app/main.py` | built |
 | Schema-validated inference with feedback retry and streaming metrics | `app/services/inference.py`, `app/services/output_validator.py` | built |
-| Ollama access behind an interface | `app/clients/ollama.py` | built |
+| Ollama access behind an interface, with an optional output schema and timeout | `app/clients/base.py`, `app/clients/ollama.py` | built |
 | One model loaded at a time | `app/services/model_loading.py` | built |
 | CPU, RAM, and VRAM sampling | `app/resource_monitor.py` | built |
 | Benchmark runner and CSV output | `app/services/benchmark_runner.py`, `app/repositories/csv_metrics.py` | built |
 | Settings (Ollama URL, models, retries) | `app/config.py` | built |
 | Email loader and cleaner | not yet written | planned |
 | Batch queue with resume on crash | not yet written | planned |
-| Triage endpoint, `POST /api/triage` | not yet written | planned |
+| Triage endpoint, `POST /api/triage`, with prompt, validation, one retry, and manual-review fallback | `app/routes/triage.py`, `app/services/triage.py`, `app/prompts.py`, `app/schemas.py` | built |
 | SQLite storage and decision log | not yet written | planned |
 | Simulated identity and mailbox permissions | not yet written | planned |
 | Agent review page | not yet written | planned |
@@ -57,7 +57,7 @@ anywhere. The whole path runs on one machine with no external network calls.
 
 Dependencies point inward: routes call services, services call interfaces
 (`ILLMClient`, `IMetricsRepository`), and the concrete implementations are
-chosen in one place, `app/dependencies.py`. Triage will follow the same shape.
+chosen in one place, `app/dependencies.py`. Triage follows the same shape.
 
 ## Data flow
 
@@ -68,12 +68,13 @@ chosen in one place, `app/dependencies.py`. Triage will follow the same shape.
    restarting. `planned`
 4. Each email is sent to the active Ollama model with the triage schema as the
    required output format. Before the call, every other loaded model is
-   unloaded. The streamed call already exists for benchmarking. `built` for the
-   call, `planned` for the triage prompt
+   unloaded and the active one is loaded, so a cold start does not count against
+   the timeout. `built` (the triage call is not streamed; only the benchmark
+   measures time to first token)
 5. The reply is validated with Pydantic. Invalid output gets one retry with the
-   validation errors fed back. Output that is still invalid, or a timeout, goes
-   to the manual review queue. `built` for validate-and-retry, `planned` for the
-   triage limits
+   validation errors fed back. Output that is still invalid goes to manual
+   review, and a timeout or model error is marked failed. `built` for the
+   endpoint, which returns the status; the queue itself is `planned`
 6. The result and a decision log entry (email id, model, latency, outcome) are
    written to SQLite. `planned`
 7. The agent sees only the mailboxes assigned to them and approves, edits, or
@@ -81,7 +82,7 @@ chosen in one place, `app/dependencies.py`. Triage will follow the same shape.
 
 ## Output schema
 
-The model must return this shape (Pydantic model, `planned`):
+The model must return this shape (Pydantic model `TriageResult`, `built`):
 
 | Field | Type | Rule |
 | --- | --- | --- |
@@ -123,10 +124,11 @@ levels the higher one wins, and spam is always low.
   `planned`
 - **Retries:** triage makes two attempts in total, meaning one retry. In
   `app/config.py`, `MAX_RETRIES` is 3 and counts total attempts, and it applies
-  to the benchmark path today. The triage spec will define its own constant.
-- **Timeout:** the model call gets 30 seconds, then the email is marked failed,
-  goes to manual review, and the batch continues. The current inference call has
-  no timeout, so this is `planned`.
+  to the benchmark path today. Triage uses its own `TRIAGE_MAX_ATTEMPTS`, set to
+  2. Only invalid output is retried; a timeout or model error is not.
+- **Timeout:** the model call gets 30 seconds (`TRIAGE_TIMEOUT_SEC`), then the
+  email is marked `failed` and goes to manual review. The endpoint `built`; the
+  batch continuing past it is `planned`.
 - **Logging:** every decision records email id, model, latency, and outcome.
   `planned`
 

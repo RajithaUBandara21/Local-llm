@@ -1,11 +1,19 @@
 from abc import ABC, abstractmethod
 
 
+class LLMTimeoutError(Exception):
+    """The model did not answer within the time allowed."""
+
+
 class ILLMClient(ABC):
     """Abstract interface for LLM interactions."""
 
     @abstractmethod
-    def generate(self, model: str, prompt: str, temperature: float) -> dict: pass
+    def generate(
+        self, model: str, prompt: str, temperature: float,
+        schema: dict | None = None, timeout: float | None = None
+    ) -> dict:
+        """Return the model reply; `schema` constrains its JSON, `timeout` raises LLMTimeoutError."""
 
     @abstractmethod
     def load_model(self, model: str) -> None: pass

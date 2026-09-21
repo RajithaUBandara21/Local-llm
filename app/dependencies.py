@@ -7,6 +7,7 @@ from app.repositories.base import IMetricsRepository
 from app.repositories.csv_metrics import CSVMetricsRepository
 from app.services.assistant import AssistantService
 from app.services.benchmark import BenchmarkService
+from app.services.triage import TriageService
 from app.state import AppState, get_app_state
 
 
@@ -30,3 +31,10 @@ def get_benchmark_service(
     state: AppState = Depends(get_app_state)
 ) -> BenchmarkService:
     return BenchmarkService(state, client)
+
+
+def get_triage_service(
+    client: ILLMClient = Depends(get_llm_client),
+    state: AppState = Depends(get_app_state)
+) -> TriageService:
+    return TriageService(client, state)
