@@ -27,7 +27,7 @@ class FakeClient(ILLMClient):
         if not self.replies:
             return self.reply
         outcome = self.replies.pop(0)
-        if isinstance(outcome, Exception):
+        if isinstance(outcome, BaseException):
             raise outcome
         return {"response": outcome} if isinstance(outcome, str) else outcome
 

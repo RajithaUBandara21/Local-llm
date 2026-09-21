@@ -4,14 +4,22 @@ import pytest
 from fastapi import BackgroundTasks, HTTPException
 
 from app.repositories.base import IMetricsRepository
+from app.repositories.sqlite_batches import SQLiteBatchRepository
 from app.routes.benchmark import (
     get_benchmark_status_endpoint,
     get_dashboard_metrics_endpoint,
     start_benchmark_endpoint,
 )
+from app.routes.batches import (
+    create_batch_endpoint,
+    get_batch_endpoint,
+    list_batches_endpoint,
+    resume_batch_endpoint,
+)
 from app.routes.health import health_check
 from app.routes.triage import triage_endpoint
-from app.schemas import BenchmarkRequest, BenchmarkSetting, TriageRequest
+from app.schemas import BatchRequest, BenchmarkRequest, BenchmarkSetting, TriageRequest
+from app.services.batch import BatchService
 from app.services.benchmark import BenchmarkService
 from app.services.triage import TriageService
 from app.state import AppState
@@ -131,3 +139,84 @@ def test_triage_surfaces_the_benchmark_refusal():
         triage_endpoint(TriageRequest(body="hello"), service)
 
     assert error.value.status_code == 400
+
+
+def make_batch_service(tmp_path, state=None):
+    state = state or AppState()
+    mailbox = tmp_path / "mail"
+    mailbox.mkdir(exist_ok=True)
+    (mailbox / "two.csv").write_text(
+        "sender,subject,body,received_at,mailbox\n"
+        "a@example.com,One,First,2026-03-02T08:00:00+00:00,support\n"
+        "b@example.com,Two,Second,2026-03-02T08:01:00+00:00,support\n",
+        encoding="utf-8",
+    )
+    repository = SQLiteBatchRepository(tmp_path / "triage.db")
+    return BatchService(repository, TriageService(FakeClient(), state), state, mailbox), state
+
+
+def test_creating_a_batch_schedules_its_worker_and_returns_the_status(tmp_path):
+    service, state = make_batch_service(tmp_path)
+    tasks = BackgroundTasks()
+
+    batch = create_batch_endpoint(BatchRequest(file="two.csv"), tasks, service)
+
+    assert (batch.status, batch.total, batch.active) == ("running", 2, True)
+    assert [task.func for task in tasks.tasks] == [service.run]
+    assert tasks.tasks[0].args == (batch.id,)
+    assert state.active_batch_id == batch.id
+
+
+def test_a_refused_batch_schedules_nothing(tmp_path):
+    service, _ = make_batch_service(tmp_path)
+    tasks = BackgroundTasks()
+
+    with pytest.raises(HTTPException) as error:
+        create_batch_endpoint(BatchRequest(file="../two.csv"), tasks, service)
+
+    assert error.value.status_code == 400
+    assert tasks.tasks == []
+
+
+def test_batches_can_be_read_one_at_a_time_and_as_a_list(tmp_path):
+    service, _ = make_batch_service(tmp_path)
+    batch = create_batch_endpoint(BatchRequest(file="two.csv"), BackgroundTasks(), service)
+
+    assert get_batch_endpoint(batch.id, service).id == batch.id
+    assert [item.id for item in list_batches_endpoint(service)] == [batch.id]
+
+    with pytest.raises(HTTPException) as error:
+        get_batch_endpoint(999, service)
+    assert error.value.status_code == 404
+
+
+def test_resuming_schedules_the_worker_and_unknown_or_busy_batches_are_refused(tmp_path):
+    service, state = make_batch_service(tmp_path)
+    first = create_batch_endpoint(BatchRequest(file="two.csv"), BackgroundTasks(), service)
+    state.active_batch_id = None
+    tasks = BackgroundTasks()
+
+    resumed = resume_batch_endpoint(first.id, tasks, service)
+
+    assert resumed.active is True
+    assert tasks.tasks[0].args == (first.id,)
+    with pytest.raises(HTTPException) as busy:
+        resume_batch_endpoint(first.id, BackgroundTasks(), service)
+    assert busy.value.status_code == 400
+    with pytest.raises(HTTPException) as missing:
+        resume_batch_endpoint(999, BackgroundTasks(), service)
+    assert missing.value.status_code == 404
+
+
+def test_a_benchmark_cannot_start_while_a_batch_is_running():
+    state = AppState()
+    state.active_batch_id = 3
+    tasks = BackgroundTasks()
+    service = BenchmarkService(state, FakeClient())
+
+    with pytest.raises(HTTPException) as error:
+        start_benchmark_endpoint(tasks, state, service)
+
+    assert error.value.status_code == 400
+    assert "batch" in error.value.detail
+    assert tasks.tasks == []

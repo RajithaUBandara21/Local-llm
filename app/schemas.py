@@ -101,3 +101,28 @@ class TriageResponse(BaseModel):
     latency_sec: float
     result: TriageResult | None = None
     failure_reason: str | None = None
+
+
+class StoredEmail(LoadedEmail):
+    """An email row in a batch; ids grow in file order."""
+    id: int
+
+
+class BatchRequest(BaseModel):
+    """Names a file inside the server's mailbox folder; never a path."""
+    file: NonBlankText
+
+
+class BatchStatus(BaseModel):
+    """`processed` is the number of stored results; `active` means a worker in this process is on it."""
+    id: int
+    source_file: str
+    status: Literal["running", "completed"]
+    active: bool = False
+    total: int
+    processed: int
+    ok: int
+    needs_review: int
+    failed: int
+    created_at: datetime
+    finished_at: datetime | None = None

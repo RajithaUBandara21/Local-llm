@@ -35,6 +35,7 @@ def load_setting(name: str, default: str, env_file: Path = ENV_FILE) -> str:
 
 
 OLLAMA_URL = load_setting("OLLAMA_URL", "http://localhost:11434").rstrip("/")
+DATABASE_PATH = load_setting("DATABASE_PATH", "triage.db")
 OLLAMA_GENERATE_URL = f"{OLLAMA_URL}/api/generate"
 OLLAMA_PS_URL = f"{OLLAMA_URL}/api/ps"
 
@@ -53,3 +54,6 @@ TRIAGE_TIMEOUT_SEC = 30
 # About 1500 tokens, so the prompt stays inside a small default context window
 # instead of being silently truncated by Ollama.
 TRIAGE_MAX_BODY_CHARS = 6000
+
+# Batches load mailbox files from here; the API accepts only a bare file name inside it.
+MAILBOX_DIR = "data"

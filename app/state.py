@@ -1,3 +1,5 @@
+import threading
+
 from app.config import MODELS
 
 
@@ -8,6 +10,9 @@ class AppState:
         self.active_model: str = MODELS[0] if MODELS else "llama3.2"
         self.active_temperature: float = 0.7
         self.benchmark_running: bool = False
+        self.active_batch_id: int | None = None
+        # Held while a batch start or resume checks and claims the worker slot.
+        self.batch_lock = threading.Lock()
 
 
 global_state = AppState()

@@ -8,3 +8,5 @@ CLAUDE.md
 .venv/
 __pycache__/
 .env
+*.db
+*.db-journal

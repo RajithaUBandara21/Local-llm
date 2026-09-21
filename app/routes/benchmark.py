@@ -18,6 +18,9 @@ def start_benchmark_endpoint(
 ):
     if state.benchmark_running:
         raise HTTPException(status_code=400, detail="A benchmark is already running.")
+    if state.active_batch_id is not None:
+        # Starting a benchmark would unload the model the batch is using.
+        raise HTTPException(status_code=400, detail="A triage batch is running; try again when it finishes.")
 
     # Built here so a bad request gets its 400 now instead of failing in the background.
     plan = service.build_plan(request)

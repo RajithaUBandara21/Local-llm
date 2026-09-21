@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routes import assistant, benchmark, health, triage
+from app.routes import assistant, batches, benchmark, health, triage
 
 app = FastAPI(title="SOLID AI Assistant & Benchmark API")
 
@@ -14,6 +14,7 @@ app.add_middleware(
 )
 
 app.include_router(assistant.router)
+app.include_router(batches.router)
 app.include_router(benchmark.router)
 app.include_router(health.router)
 app.include_router(triage.router)

@@ -22,7 +22,8 @@ Bootstrap dashboard prototype that calls the API.
 - `requests` (blocking HTTP to Ollama), `psutil` and `nvidia-smi` (resource metrics)
 - `pytest` (unit tests)
 - Ollama running at `http://localhost:11434` with the configured models pulled
-- No database; state is in memory and benchmark output is CSV
+- SQLite (standard library `sqlite3`) for batches, emails, triage results, and the
+  decision log; other state is in memory and benchmark output is CSV
 
 ## Layout
 
@@ -40,14 +41,16 @@ inward (routes, then services, then interfaces).
 - `app/state.py` - in-memory `AppState`
 - `app/dependencies.py` - `Depends` providers, the one place concrete
   implementations are chosen
-- `app/routes/` - HTTP handlers only (`assistant`, `benchmark`, `health`, `triage`)
-- `app/services/` - business rules (`assistant`, `benchmark`, `triage`), the benchmark
+- `app/routes/` - HTTP handlers only (`assistant`, `batches`, `benchmark`, `health`,
+  `triage`)
+- `app/services/` - business rules (`assistant`, `batch`, `benchmark`, `triage`), the benchmark
   runner, streaming inference with schema validation and retry,
   `output_validator`, and `model_loading` (unloads every loaded model except the
   one about to be used)
 - `app/clients/` - `ILLMClient` (its `generate` takes an optional JSON schema and
   timeout; a timeout raises `LLMTimeoutError`) and `OllamaClient`
-- `app/repositories/` - `IMetricsRepository` and `CSVMetricsRepository`
+- `app/repositories/` - `IMetricsRepository` and `CSVMetricsRepository`;
+  `IBatchRepository` and `SQLiteBatchRepository` (schema, results, decision log)
 - `app/loaders/` - mailbox file loaders: `IEmailLoader` and `EmailLoadError`,
   `CsvEmailLoader` and `MboxEmailLoader`, the body `cleaner`, and the extension
   `factory`
@@ -65,6 +68,9 @@ inward (routes, then services, then interfaces).
 `OLLAMA_URL` is the Ollama base URL (default `http://localhost:11434`, no path).
 It comes from a real environment variable, then `.env`, then the default, and is
 read only in `app/config.py`.
+
+`DATABASE_PATH` is the SQLite file for batches and triage results (default
+`triage.db` in the working directory, git-ignored). It resolves the same way.
 
 ## Proportional engineering
 
@@ -132,10 +138,12 @@ pytest is set up and the `test` command above is the gate. The suite covers
 (with `requests` and resource sampling mocked), `CSVMetricsRepository` (against
 temporary directories), the `.env` config loader, the prompt switch,
 `AssistantService`, `BenchmarkService`, `unload_others` in
-`app/services/model_loading.py`, the email cleaner, `CsvEmailLoader`,
+`app/services/model_loading.py`, `SQLiteBatchRepository` (real SQLite files in
+temporary directories), `BatchService` (crash and resume, guards including
+overlapping starts, file-name checks), the email cleaner, `CsvEmailLoader`,
 `MboxEmailLoader`, and the loader factory (against temporary files), and the
-benchmark and triage route functions (called directly with fakes, since `httpx`
-for `TestClient` is not installed). Triage is covered by the schema rules, the
+benchmark, triage, and batch route functions (called directly with fakes, since
+`httpx` for `TestClient` is not installed). Triage is covered by the schema rules, the
 prompt builders, `TriageService` (every retry, timeout, and failure branch), and
 `OllamaClient.generate` (with `requests` mocked). `tests/test_dataset.py` checks
 the real `data/northport_emails.csv` (structure, labels, cleaner round trip). The

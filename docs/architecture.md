@@ -46,10 +46,10 @@ anywhere. The whole path runs on one machine with no external network calls.
 | CPU, RAM, and VRAM sampling | `app/resource_monitor.py` | built |
 | Benchmark runner and CSV output | `app/services/benchmark_runner.py`, `app/repositories/csv_metrics.py` | built |
 | Settings (Ollama URL, models, retries) | `app/config.py` | built |
-| Email loader and cleaner | not yet written | planned |
-| Batch queue with resume on crash | not yet written | planned |
+| Email loader and cleaner | `app/loaders/` | built |
+| Batch queue with resume on crash, `POST /api/batches` | `app/services/batch.py`, `app/routes/batches.py` | built |
 | Triage endpoint, `POST /api/triage`, with prompt, validation, one retry, and manual-review fallback | `app/routes/triage.py`, `app/services/triage.py`, `app/prompts.py`, `app/schemas.py` | built |
-| SQLite storage and decision log | not yet written | planned |
+| SQLite storage (batches, emails, results) and decision log | `app/repositories/sqlite_batches.py` | built |
 | Simulated identity and mailbox permissions | not yet written | planned |
 | Agent review page | not yet written | planned |
 | Benchmark dashboard | not yet written | planned |
@@ -61,11 +61,14 @@ chosen in one place, `app/dependencies.py`. Triage follows the same shape.
 
 ## Data flow
 
-1. An agent or script supplies a mailbox file (mbox or CSV). `planned`
+1. An agent or script names a mailbox file (mbox or CSV) that already sits in the
+   server's mailbox folder (`POST /api/batches`); only a bare file name is
+   accepted, never a path. `built`
 2. The loader parses it and the cleaner strips signatures, quoted replies, and
-   HTML, leaving a clean body per email. `planned`
+   HTML, leaving a clean body per email. `built`
 3. The emails become a batch with a status, so a crash resumes instead of
-   restarting. `planned`
+   restarting. Resuming is an explicit request (`POST /api/batches/{id}/resume`)
+   that processes only the emails with no stored result. `built`
 4. Each email is sent to the active Ollama model with the triage schema as the
    required output format. Before the call, every other loaded model is
    unloaded and the active one is loaded, so a cold start does not count against
@@ -73,10 +76,12 @@ chosen in one place, `app/dependencies.py`. Triage follows the same shape.
    measures time to first token)
 5. The reply is validated with Pydantic. Invalid output gets one retry with the
    validation errors fed back. Output that is still invalid goes to manual
-   review, and a timeout or model error is marked failed. `built` for the
-   endpoint, which returns the status; the queue itself is `planned`
+   review, and a timeout or model error is marked failed. The batch stores that
+   status and moves on to the next email. An email with no readable body, or one
+   longer than the body cap, goes to manual review without a model call. `built`;
+   the manual review queue itself is `planned`
 6. The result and a decision log entry (email id, model, latency, outcome) are
-   written to SQLite. `planned`
+   written to SQLite in one transaction. `built`
 7. The agent sees only the mailboxes assigned to them and approves, edits, or
    rejects each draft. `planned`
 
@@ -127,10 +132,10 @@ levels the higher one wins, and spam is always low.
   to the benchmark path today. Triage uses its own `TRIAGE_MAX_ATTEMPTS`, set to
   2. Only invalid output is retried; a timeout or model error is not.
 - **Timeout:** the model call gets 30 seconds (`TRIAGE_TIMEOUT_SEC`), then the
-  email is marked `failed` and goes to manual review. The endpoint `built`; the
-  batch continuing past it is `planned`.
-- **Logging:** every decision records email id, model, latency, and outcome.
-  `planned`
+  email is marked `failed` and goes to manual review, and the batch continues
+  with the next email. `built`.
+- **Logging:** every decision records email id, model, latency, and outcome in
+  the `decision_log` table. `built`. Structured application logs are `planned`.
 
 ## Failure modes
 
