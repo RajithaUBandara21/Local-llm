@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Benchmark - NorthPort Triage</title>
+<link rel="stylesheet" href="theme.css" />
+<style>
+  .run-bar {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 16px;
+  }
+  .run-bar .field {
+    min-width: 170px;
+  }
+  .config-list {
+    padding: 0 16px;
+  }
+  .config-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 10px 12px;
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+  }
+  .config-row .field {
+    min-width: 170px;
+  }
+  .config-remove {
+    margin-left: auto;
+  }
+  .config-add {
+    padding: 4px 0 12px;
+  }
+  .progress-track {
+    height: 6px;
+    border-radius: 999px;
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    margin-top: 10px;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 62%;
+    background: var(--accent);
+  }
+  .progress-label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 6px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    padding: 16px;
+  }
+  .summary-stat {
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+  }
+  .summary-stat .stat-label {
+    font-size: 11px;
+    color: var(--faint);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+  }
+  .summary-stat .stat-value {
+    font-size: 18px;
+    font-weight: 600;
+  }
+  .summary-stat .stat-value.ok {
+    color: var(--status-ok);
+  }
+  @media (max-width: 720px) {
+    .summary-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">NorthPort <span class="sep">/</span> Benchmark</div>
+  <nav class="nav-tabs">
+    <a class="nav-tab" href="#">Mail queue</a>
+    <a class="nav-tab" href="#">Admin</a>
+    <a class="nav-tab active" href="#">Benchmark</a>
+  </nav>
+</div>
+
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Benchmark testing</h1>
+      <p class="page-subtitle">Queue one or more model/temperature configs, run them together as one benchmark, and review the resulting metrics from the shared CSV.</p>
+    </div>
+  </div>
+
+  <!-- Run controls -->
+  <div class="panel">
+    <div class="panel-header">
+      <h2>Run configuration</h2>
+      <span class="hint">Wired to POST /api/benchmark/start</span>
+    </div>
+    <div class="config-list">
+      <div class="config-row">
+        <div class="field">
+          <label for="config-1-model">Model</label>
+          <select id="config-1-model">
+            <option>llama3.2 (3B)</option>
+            <option selected>phi-4-Q4 (14.7B Q4_K_M)</option>
+            <option>mistral-7b-q4 (v0.3 Q4_K_M)</option>
+            <option>mistral-7b-Q5 (v0.1 Q5_K_M)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="config-1-temp">Temperature</label>
+          <select id="config-1-temp">
+            <option>0.0</option>
+            <option selected>0.7</option>
+            <option>1.0</option>
+          </select>
+        </div>
+        <button class="btn btn-sm btn-danger config-remove">Remove</button>
+      </div>
+      <div class="config-row">
+        <div class="field">
+          <label for="config-2-model">Model</label>
+          <select id="config-2-model">
+            <option>llama3.2 (3B)</option>
+            <option>phi-4-Q4 (14.7B Q4_K_M)</option>
+            <option>mistral-7b-q4 (v0.3 Q4_K_M)</option>
+            <option selected>mistral-7b-Q5 (v0.1 Q5_K_M)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="config-2-temp">Temperature</label>
+          <select id="config-2-temp">
+            <option>0.0</option>
+            <option selected>0.7</option>
+            <option>1.0</option>
+          </select>
+        </div>
+        <button class="btn btn-sm btn-danger config-remove">Remove</button>
+      </div>
+      <div class="config-add">
+        <button class="btn btn-sm">+ Add model</button>
+      </div>
+    </div>
+
+    <div class="run-bar" style="padding-top: 0;">
+      <div class="field">
+        <label for="prompt-count">Prompts</label>
+        <input id="prompt-count" type="number" value="8" min="1" />
+      </div>
+      <div class="field">
+        <label for="runs">Runs per prompt</label>
+        <input id="runs" type="number" value="3" min="1" />
+      </div>
+      <button class="btn btn-primary">Run benchmark &middot; 2 models</button>
+    </div>
+
+    <div style="padding: 0 16px 16px;">
+      <div class="progress-track"><div class="progress-fill"></div></div>
+      <div class="progress-label">
+        <span>Running phi-4-Q4 at temperature 0.7 (model 1 of 2)&hellip; attempt 25 of 80</span>
+        <span class="status-pill running">Running</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Last run summary -->
+  <div class="panel">
+    <div class="panel-header">
+      <h2>Last run summary</h2>
+      <span class="hint">benchmark_phase2_attempts_20260921_1408.csv &middot; 2 models, shared file &middot; 8 prompts &times; 3 runs</span>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Model</th>
+          <th>Attempts</th>
+          <th>Avg TTFT</th>
+          <th>Avg latency</th>
+          <th>Avg tokens/s</th>
+          <th>Avg CPU</th>
+          <th>Avg RAM</th>
+          <th>Valid JSON</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="cell-mono">phi-4-Q4</td>
+          <td class="cell-muted">24</td>
+          <td class="cell-muted">0.60 s</td>
+          <td class="cell-muted">3.72 s</td>
+          <td class="cell-muted">21.6</td>
+          <td class="cell-muted">79%</td>
+          <td class="cell-muted">6.1 GB</td>
+          <td><span class="status-pill completed">95.8%</span></td>
+        </tr>
+        <tr>
+          <td class="cell-mono">mistral-7b-Q5</td>
+          <td class="cell-muted">24</td>
+          <td class="cell-muted">0.63 s</td>
+          <td class="cell-muted">3.88 s</td>
+          <td class="cell-muted">21.1</td>
+          <td class="cell-muted">80%</td>
+          <td class="cell-muted">5.4 GB</td>
+          <td><span class="status-pill completed">99.2%</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Results table -->
+  <div class="panel">
+    <div class="panel-header">
+      <h2>Attempt results</h2>
+      <button class="btn btn-sm">Export CSV</button>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Model</th>
+          <th>Prompt</th>
+          <th>Temp</th>
+          <th>Run</th>
+          <th>Attempt</th>
+          <th>Valid JSON</th>
+          <th>TTFT</th>
+          <th>Latency</th>
+          <th>Tokens/s</th>
+          <th>CPU %</th>
+          <th>RAM</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="cell-mono">phi-4-Q4</td>
+          <td class="cell-muted">triage_refund_01</td>
+          <td>0.7</td>
+          <td>1</td>
+          <td>1</td>
+          <td><span class="status-pill completed">Valid</span></td>
+          <td class="cell-muted">0.62 s</td>
+          <td class="cell-muted">3.41 s</td>
+          <td class="cell-muted">23.1</td>
+          <td class="cell-muted">78%</td>
+          <td class="cell-muted">6.0 GB</td>
+        </tr>
+        <tr>
+          <td class="cell-mono">phi-4-Q4</td>
+          <td class="cell-muted">triage_delivery_02</td>
+          <td>0.7</td>
+          <td>1</td>
+          <td>1</td>
+          <td><span class="status-pill completed">Valid</span></td>
+          <td class="cell-muted">0.58 s</td>
+          <td class="cell-muted">4.02 s</td>
+          <td class="cell-muted">19.8</td>
+          <td class="cell-muted">81%</td>
+          <td class="cell-muted">6.1 GB</td>
+        </tr>
+        <tr>
+          <td class="cell-mono">phi-4-Q4</td>
+          <td class="cell-muted">triage_billing_03</td>
+          <td>0.7</td>
+          <td>1</td>
+          <td>1</td>
+          <td><span class="status-pill invalid">Invalid</span></td>
+          <td class="cell-muted">0.55 s</td>
+          <td class="cell-muted">3.88 s</td>
+          <td class="cell-muted">20.5</td>
+          <td class="cell-muted">80%</td>
+          <td class="cell-muted">6.1 GB</td>
+        </tr>
+        <tr>
+          <td class="cell-mono">phi-4-Q4</td>
+          <td class="cell-muted">triage_billing_03</td>
+          <td>0.7</td>
+          <td>1</td>
+          <td>2</td>
+          <td><span class="status-pill completed">Valid</span></td>
+          <td class="cell-muted">0.60 s</td>
+          <td class="cell-muted">3.95 s</td>
+          <td class="cell-muted">20.1</td>
+          <td class="cell-muted">79%</td>
+          <td class="cell-muted">6.1 GB</td>
+        </tr>
+        <tr>
+          <td class="cell-mono">phi-4-Q4</td>
+          <td class="cell-muted">triage_complaint_04</td>
+          <td>0.7</td>
+          <td>2</td>
+          <td>1</td>
+          <td><span class="status-pill completed">Valid</span></td>
+          <td class="cell-muted">0.64 s</td>
+          <td class="cell-muted">3.55 s</td>
+          <td class="cell-muted">22.7</td>
+          <td class="cell-muted">77%</td>
+          <td class="cell-muted">6.0 GB</td>
+        </tr>
+        <tr>
+          <td class="cell-mono">mistral-7b-Q5</td>
+          <td class="cell-muted">triage_refund_01</td>
+          <td>0.7</td>
+          <td>1</td>
+          <td>1</td>
+          <td><span class="status-pill completed">Valid</span></td>
+          <td class="cell-muted">0.65 s</td>
+          <td class="cell-muted">3.79 s</td>
+          <td class="cell-muted">20.9</td>
+          <td class="cell-muted">80%</td>
+          <td class="cell-muted">5.4 GB</td>
+        </tr>
+        <tr>
+          <td class="cell-mono">mistral-7b-Q5</td>
+          <td class="cell-muted">triage_delivery_02</td>
+          <td>0.7</td>
+          <td>1</td>
+          <td>1</td>
+          <td><span class="status-pill completed">Valid</span></td>
+          <td class="cell-muted">0.61 s</td>
+          <td class="cell-muted">3.94 s</td>
+          <td class="cell-muted">21.3</td>
+          <td class="cell-muted">81%</td>
+          <td class="cell-muted">5.5 GB</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+</body>
+</html>

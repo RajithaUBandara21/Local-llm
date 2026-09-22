@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin - NorthPort Triage</title>
+<link rel="stylesheet" href="theme.css" />
+<style>
+  .assign-chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .add-form {
+    border-top: 1px solid var(--border);
+    padding: 14px 16px;
+    background: var(--surface-sunken);
+  }
+  .add-form .form-row {
+    margin-bottom: 0;
+  }
+  .checkbox-group {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    padding: 7px 0;
+  }
+  .checkbox-group label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text);
+    text-transform: none;
+    letter-spacing: normal;
+    cursor: pointer;
+  }
+  .gmail-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px;
+    flex-wrap: wrap;
+  }
+  .gmail-account {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .gmail-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    background: var(--accent-soft);
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+  .gmail-meta {
+    font-size: 12px;
+    color: var(--faint);
+    margin-top: 2px;
+  }
+  .gmail-email {
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .gmail-disconnected .gmail-icon {
+    background: var(--priority-low-bg);
+    color: var(--priority-low);
+  }
+  .section-note {
+    font-size: 12px;
+    color: var(--faint);
+    padding: 10px 16px 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">NorthPort <span class="sep">/</span> Admin</div>
+  <nav class="nav-tabs">
+    <a class="nav-tab" href="#">Mail queue</a>
+    <a class="nav-tab active" href="#">Admin</a>
+    <a class="nav-tab" href="#">Benchmark</a>
+  </nav>
+</div>
+
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Agents &amp; mailboxes</h1>
+      <p class="page-subtitle">Manage support agents, mailboxes, and who can open what. Replaces the seed file once wired to the backend (feature 26).</p>
+    </div>
+  </div>
+
+  <!-- Agents panel -->
+  <div class="panel">
+    <div class="panel-header">
+      <h2>Agents</h2>
+      <span class="hint">4 agents</span>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Assigned mailboxes</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Asha</td>
+          <td><div class="assign-chips"><span class="badge badge-mailbox">support</span><span class="badge badge-mailbox">refunds</span></div></td>
+          <td class="table-actions"><button class="btn btn-sm">Edit</button><button class="btn btn-sm btn-danger">Remove</button></td>
+        </tr>
+        <tr>
+          <td>Ben</td>
+          <td><div class="assign-chips"><span class="badge badge-mailbox">support</span><span class="badge badge-mailbox">refunds</span></div></td>
+          <td class="table-actions"><button class="btn btn-sm">Edit</button><button class="btn btn-sm btn-danger">Remove</button></td>
+        </tr>
+        <tr>
+          <td>Chen</td>
+          <td><div class="assign-chips"><span class="badge badge-mailbox">support</span><span class="badge badge-mailbox">deliveries</span></div></td>
+          <td class="table-actions"><button class="btn btn-sm">Edit</button><button class="btn btn-sm btn-danger">Remove</button></td>
+        </tr>
+        <tr>
+          <td>Dana</td>
+          <td><div class="assign-chips"><span class="badge badge-mailbox">support</span><span class="badge badge-mailbox">deliveries</span></div></td>
+          <td class="table-actions"><button class="btn btn-sm">Edit</button><button class="btn btn-sm btn-danger">Remove</button></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="add-form">
+      <div class="form-row">
+        <div class="field">
+          <label for="agent-name">New agent name</label>
+          <input id="agent-name" type="text" placeholder="e.g. Priya" />
+        </div>
+        <div class="field" style="flex: 2;">
+          <label>Mailbox access</label>
+          <div class="checkbox-group">
+            <label><input type="checkbox" /> support</label>
+            <label><input type="checkbox" /> refunds</label>
+            <label><input type="checkbox" /> deliveries</label>
+          </div>
+        </div>
+        <button class="btn btn-primary">Add agent</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mailboxes panel -->
+  <div class="panel">
+    <div class="panel-header">
+      <h2>Mailboxes</h2>
+      <span class="hint">3 mailboxes</span>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Mailbox</th>
+          <th>Agents</th>
+          <th>Source</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>support</td>
+          <td class="cell-muted">Asha, Ben, Chen, Dana</td>
+          <td class="cell-mono">seed file</td>
+          <td class="table-actions"><button class="btn btn-sm">Edit</button></td>
+        </tr>
+        <tr>
+          <td>refunds</td>
+          <td class="cell-muted">Asha, Ben</td>
+          <td class="cell-mono">seed file</td>
+          <td class="table-actions"><button class="btn btn-sm">Edit</button></td>
+        </tr>
+        <tr>
+          <td>deliveries</td>
+          <td class="cell-muted">Chen, Dana</td>
+          <td class="cell-mono">seed file</td>
+          <td class="table-actions"><button class="btn btn-sm">Edit</button></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="add-form">
+      <div class="form-row">
+        <div class="field">
+          <label for="mailbox-name">New mailbox name</label>
+          <input id="mailbox-name" type="text" placeholder="e.g. billing" />
+        </div>
+        <button class="btn btn-primary">Add mailbox</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gmail connection panel -->
+  <div class="panel">
+    <div class="panel-header">
+      <h2>Gmail connection</h2>
+      <span class="hint">Opt-in live mail transport (feature 30)</span>
+    </div>
+
+    <div class="gmail-card">
+      <div class="gmail-account">
+        <div class="gmail-icon">G</div>
+        <div>
+          <div class="gmail-email">support@northportlogistics.example</div>
+          <div class="gmail-meta">Connected Sep 12, 2026 &middot; refunds mailbox</div>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span class="status-pill connected">Connected</span>
+        <button class="btn btn-danger">Disconnect</button>
+      </div>
+    </div>
+
+    <div class="gmail-card gmail-disconnected" style="border-top: 1px solid var(--border);">
+      <div class="gmail-account">
+        <div class="gmail-icon">G</div>
+        <div>
+          <div class="gmail-email">Not connected</div>
+          <div class="gmail-meta">deliveries mailbox</div>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span class="status-pill disconnected">Disconnected</span>
+        <button class="btn btn-primary">Connect Gmail</button>
+      </div>
+    </div>
+    <p class="section-note">Mock only: OAuth connect/status/disconnect wires to a real Google account in feature 26.</p>
+  </div>
+</div>
+
+</body>
+</html>
