@@ -1,4 +1,4 @@
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, Response, status
 
 from app.dependencies import get_batch_service
 from app.schemas import BatchRequest, BatchStatus
@@ -38,3 +38,19 @@ def resume_batch_endpoint(
     batch = service.resume(batch_id)
     background_tasks.add_task(service.run, batch.id)
     return batch
+
+
+@router.post("/api/mailboxes/{mailbox}/bulk-insert", response_model=BatchStatus)
+def bulk_insert_endpoint(
+    mailbox: str,
+    background_tasks: BackgroundTasks,
+    service: BatchService = Depends(get_batch_service)
+):
+    batch = service.bulk_insert(mailbox)
+    background_tasks.add_task(service.run, batch.id)
+    return batch
+
+
+@router.delete("/api/batches/{batch_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+def delete_batch_endpoint(batch_id: int, service: BatchService = Depends(get_batch_service)):
+    service.delete(batch_id)

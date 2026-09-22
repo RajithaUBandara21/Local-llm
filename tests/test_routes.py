@@ -19,7 +19,9 @@ from app.routes.access import (
     review_email_endpoint,
 )
 from app.routes.batches import (
+    bulk_insert_endpoint,
     create_batch_endpoint,
+    delete_batch_endpoint,
     get_batch_endpoint,
     list_batches_endpoint,
     resume_batch_endpoint,
@@ -173,8 +175,11 @@ def make_batch_service(tmp_path, state=None):
         "b@example.com,Two,Second,2026-03-02T08:01:00+00:00,support\n",
         encoding="utf-8",
     )
-    repository = SQLiteBatchRepository(tmp_path / "triage.db")
-    return BatchService(repository, TriageService(FakeClient(), state), state, mailbox), state
+    db_path = tmp_path / "triage.db"
+    repository = SQLiteBatchRepository(db_path)
+    access = SQLiteAccessRepository(db_path)
+    access.replace_directory(Seed(agents=[Agent(id="chen", name="Chen")], assignments={"support": ["chen"]}))
+    return BatchService(repository, TriageService(FakeClient(), state), state, mailbox, access), state
 
 
 def test_creating_a_batch_schedules_its_worker_and_returns_the_status(tmp_path):
@@ -227,6 +232,47 @@ def test_resuming_schedules_the_worker_and_unknown_or_busy_batches_are_refused(t
     assert busy.value.status_code == 400
     with pytest.raises(HTTPException) as missing:
         resume_batch_endpoint(999, BackgroundTasks(), service)
+    assert missing.value.status_code == 404
+
+
+def test_bulk_insert_schedules_its_worker_and_returns_the_status(tmp_path):
+    service, state = make_batch_service(tmp_path)
+    tasks = BackgroundTasks()
+
+    batch = bulk_insert_endpoint("support", tasks, service)
+
+    assert (batch.total, batch.active) == (10, True)
+    assert batch.source_file.startswith("test:support:")
+    assert [task.func for task in tasks.tasks] == [service.run]
+    assert tasks.tasks[0].args == (batch.id,)
+    assert state.active_batch_id == batch.id
+
+
+def test_bulk_insert_refuses_an_unknown_mailbox_and_schedules_nothing(tmp_path):
+    service, _ = make_batch_service(tmp_path)
+    tasks = BackgroundTasks()
+
+    with pytest.raises(HTTPException) as error:
+        bulk_insert_endpoint("not-a-real-mailbox", tasks, service)
+
+    assert error.value.status_code == 400
+    assert tasks.tasks == []
+
+
+def test_delete_batch_endpoint_removes_it_and_propagates_service_errors(tmp_path):
+    service, state = make_batch_service(tmp_path)
+    batch = create_batch_endpoint(BatchRequest(file="two.csv"), BackgroundTasks(), service)
+
+    with pytest.raises(HTTPException) as active:
+        delete_batch_endpoint(batch.id, service)
+    assert active.value.status_code == 400
+
+    state.active_batch_id = None
+    assert delete_batch_endpoint(batch.id, service) is None
+    assert list_batches_endpoint(service) == []
+
+    with pytest.raises(HTTPException) as missing:
+        delete_batch_endpoint(999, service)
     assert missing.value.status_code == 404
 
 

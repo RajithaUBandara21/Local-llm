@@ -8,12 +8,16 @@ from fastapi import HTTPException
 
 from app.clients.base import LLMTimeoutError
 from app.config import TRIAGE_MAX_BODY_CHARS
+from app.repositories.sqlite_access import SQLiteAccessRepository
 from app.repositories.sqlite_batches import SQLiteBatchRepository
+from app.schemas import Agent, Seed
 from app.services import batch as batch_module
 from app.services.batch import BatchService
 from app.services.triage import TriageService
 from app.state import AppState
 from tests.fakes import FakeClient
+
+SEED = Seed(agents=[Agent(id="chen", name="Chen")], assignments={"support": ["chen"]})
 
 VALID_REPLY = json.dumps({
     "category": "delivery",
@@ -48,8 +52,11 @@ def mailbox_dir(tmp_path):
 def make_service(tmp_path, mailbox_dir, client=None, state=None):
     state = state or AppState()
     client = client or FakeClient()
-    repo = SQLiteBatchRepository(tmp_path / "triage.db")
-    return BatchService(repo, TriageService(client, state), state, mailbox_dir), client, state, repo
+    db_path = tmp_path / "triage.db"
+    repo = SQLiteBatchRepository(db_path)
+    access = SQLiteAccessRepository(db_path)
+    access.replace_directory(SEED)
+    return BatchService(repo, TriageService(client, state), state, mailbox_dir, access), client, state, repo
 
 
 def generate_count(client):
@@ -364,3 +371,141 @@ def test_two_overlapping_resumes_claim_the_batch_once(tmp_path, mailbox_dir, mon
     assert len(refused) == 1
     assert refused[0].detail == "A batch is already running."
     assert state.active_batch_id == batch.id
+
+
+def test_delete_batch_removes_the_batch_and_every_dependent_row(tmp_path, mailbox_dir):
+    client = FakeClient(replies=[VALID_REPLY] * 4)
+    service, _, state, repo = make_service(tmp_path, mailbox_dir, client)
+    batch = service.start("four.csv")
+    service.run(batch.id)
+    triaged = repo.list_mailbox_emails("support", batch.id)
+    email_id = triaged[0].id
+    repo.save_review_action(email_id, "chen", "approve", None)
+    other = repo.create_batch("other.csv", [])
+
+    repo.delete_batch(batch.id)
+
+    assert [b.id for b in repo.list_batches()] == [other]
+    assert repo.list_mailbox_emails("support", batch.id) == []
+    assert rows(repo, f"SELECT * FROM triage_results WHERE email_id = {email_id}") == []
+    assert rows(repo, f"SELECT * FROM decision_log WHERE email_id = {email_id}") == []
+    assert rows(repo, f"SELECT * FROM review_actions WHERE email_id = {email_id}") == []
+    assert rows(repo, f"SELECT * FROM emails WHERE id = {email_id}") == []
+
+
+def test_delete_batch_on_an_unknown_id_is_a_no_op(tmp_path, mailbox_dir):
+    service, _, _, repo = make_service(tmp_path, mailbox_dir)
+    kept = repo.create_batch("kept.csv", [])
+
+    repo.delete_batch(9999)
+
+    assert [b.id for b in repo.list_batches()] == [kept]
+
+
+def test_bulk_insert_creates_a_tagged_batch_of_ten_synthetic_emails(tmp_path, mailbox_dir):
+    service, _, state, repo = make_service(tmp_path, mailbox_dir)
+
+    batch = service.bulk_insert("support")
+
+    assert batch.total == 10
+    assert batch.source_file.startswith("test:support:")
+    assert batch.active is True
+    assert state.active_batch_id == batch.id
+    emails = repo.list_mailbox_emails("support", batch.id)
+    assert len(emails) == 10
+    assert [email.subject for email in emails] == [f"Test email {n}" for n in range(1, 11)]
+
+
+def test_bulk_insert_is_refused_while_a_batch_or_benchmark_is_active(tmp_path, mailbox_dir):
+    service, _, state, repo = make_service(tmp_path, mailbox_dir)
+    service.bulk_insert("support")
+
+    with pytest.raises(HTTPException) as error:
+        service.bulk_insert("support")
+    assert error.value.status_code == 400
+    assert [b.id for b in repo.list_batches()] == [1]
+
+    state.active_batch_id = None
+    state.benchmark_running = True
+    with pytest.raises(HTTPException) as error:
+        service.bulk_insert("support")
+    assert error.value.status_code == 400
+    assert [b.id for b in repo.list_batches()] == [1]
+
+
+def test_bulk_insert_refuses_an_unknown_mailbox_and_creates_no_batch(tmp_path, mailbox_dir):
+    service, _, _, repo = make_service(tmp_path, mailbox_dir)
+
+    with pytest.raises(HTTPException) as error:
+        service.bulk_insert("not-a-real-mailbox")
+
+    assert error.value.status_code == 400
+    assert repo.list_batches() == []
+
+
+def test_delete_removes_an_idle_completed_batch(tmp_path, mailbox_dir):
+    client = FakeClient(replies=[VALID_REPLY] * 4)
+    service, _, _, repo = make_service(tmp_path, mailbox_dir, client)
+    batch = service.start("four.csv")
+    service.run(batch.id)
+
+    service.delete(batch.id)
+
+    assert repo.list_batches() == []
+
+
+def test_delete_refuses_the_currently_active_batch(tmp_path, mailbox_dir):
+    service, _, state, repo = make_service(tmp_path, mailbox_dir)
+    batch = service.start("four.csv")
+
+    with pytest.raises(HTTPException) as error:
+        service.delete(batch.id)
+
+    assert error.value.status_code == 400
+    assert [b.id for b in repo.list_batches()] == [batch.id]
+    assert state.active_batch_id == batch.id
+
+
+def test_delete_an_unknown_batch_is_404(tmp_path, mailbox_dir):
+    service, _, _, _ = make_service(tmp_path, mailbox_dir)
+
+    with pytest.raises(HTTPException) as error:
+        service.delete(42)
+
+    assert error.value.status_code == 404
+
+
+def test_a_concurrent_resume_cannot_claim_a_batch_delete_is_removing(tmp_path, mailbox_dir, monkeypatch):
+    # A crashed, un-completed batch is exactly F-17's scenario: idle (state.active_batch_id is
+    # None, so delete's guard sees it as deletable) but still resumable (status stays "running").
+    crashing = FakeClient(replies=[VALID_REPLY, VALID_REPLY, Crash("killed")])
+    service, _, state, repo = make_service(tmp_path, mailbox_dir, crashing)
+    batch = service.start("four.csv")
+    with pytest.raises(Crash):
+        service.run(batch.id)
+    assert state.active_batch_id is None
+    assert service.get(batch.id).status == "running"
+
+    delete_started = threading.Event()
+    real_delete_batch = repo.delete_batch
+
+    def slow_delete_batch(batch_id):
+        delete_started.set()
+        time.sleep(0.1)  # widens the window while delete still holds batch_lock
+        return real_delete_batch(batch_id)
+
+    monkeypatch.setattr(repo, "delete_batch", slow_delete_batch)
+
+    def delayed_resume():
+        delete_started.wait(timeout=1)  # only start once delete has the lock, so it always wins the race
+        return service.resume(batch.id)
+
+    outcomes = run_together([lambda: service.delete(batch.id), delayed_resume])
+
+    delete_outcome, resume_outcome = outcomes
+    assert delete_outcome is None
+    # A resume that starts once delete already holds the lock must never claim the batch's slot;
+    # it blocks on batch_lock and then sees the batch already gone.
+    assert isinstance(resume_outcome, HTTPException) and resume_outcome.status_code == 404
+    assert repo.list_batches() == []
+    assert state.active_batch_id is None

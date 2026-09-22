@@ -51,6 +51,10 @@ class IBatchRepository(ABC):
     ) -> ReviewAction:
         """Append one review action for the email and return it; earlier actions are kept."""
 
+    @abstractmethod
+    def delete_batch(self, batch_id: int) -> None:
+        """Delete the batch and every row that depends on it; a no-op when the batch does not exist."""
+
 
 class IAccessRepository(ABC):
     """Abstract interface for the agent directory, mailbox assignments, and denial log."""

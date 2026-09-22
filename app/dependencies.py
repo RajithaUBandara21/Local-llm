@@ -50,16 +50,17 @@ def get_batch_repository() -> IBatchRepository:
     return SQLiteBatchRepository(DATABASE_PATH)
 
 
+def get_access_repository() -> IAccessRepository:
+    return SQLiteAccessRepository(DATABASE_PATH)
+
+
 def get_batch_service(
     repository: IBatchRepository = Depends(get_batch_repository),
     client: ILLMClient = Depends(get_llm_client),
-    state: AppState = Depends(get_app_state)
+    state: AppState = Depends(get_app_state),
+    access: IAccessRepository = Depends(get_access_repository)
 ) -> BatchService:
-    return BatchService(repository, TriageService(client, state), state, Path(MAILBOX_DIR))
-
-
-def get_access_repository() -> IAccessRepository:
-    return SQLiteAccessRepository(DATABASE_PATH)
+    return BatchService(repository, TriageService(client, state), state, Path(MAILBOX_DIR), access)
 
 
 def get_access_service(

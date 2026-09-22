@@ -241,3 +241,20 @@ class SQLiteBatchRepository(IBatchRepository):
             id=review_id, email_id=email_id, agent_id=agent_id, action=action,
             edited_reply=edited_reply, created_at=now,
         )
+
+    def delete_batch(self, batch_id: int) -> None:
+        with connect(self.path) as db:
+            db.execute(
+                "DELETE FROM review_actions WHERE email_id IN (SELECT id FROM emails WHERE batch_id = ?)",
+                (batch_id,),
+            )
+            db.execute(
+                "DELETE FROM decision_log WHERE email_id IN (SELECT id FROM emails WHERE batch_id = ?)",
+                (batch_id,),
+            )
+            db.execute(
+                "DELETE FROM triage_results WHERE email_id IN (SELECT id FROM emails WHERE batch_id = ?)",
+                (batch_id,),
+            )
+            db.execute("DELETE FROM emails WHERE batch_id = ?", (batch_id,))
+            db.execute("DELETE FROM batches WHERE id = ?", (batch_id,))
