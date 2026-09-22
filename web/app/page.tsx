@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { AgentPicker } from "@/components/AgentPicker";
 import { MailboxPicker } from "@/components/MailboxPicker";
 import { QueueModeToggle } from "@/components/QueueModeToggle";
@@ -30,6 +31,9 @@ export default function ReviewPage() {
           <QueueModeToggle />
           {isLive && <ViewToggle />}
           {isLive && <FilterBar />}
+          <Link href="/admin" className="btn">
+            Admin
+          </Link>
         </div>
       </header>
 

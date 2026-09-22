@@ -86,3 +86,21 @@ export interface MockTestEmail {
   subject: string;
   received_at: string;
 }
+
+// Admin dashboard (feature 23) mock types. No admin backend exists yet
+// (feature 26 owns it); these never round-trip through app/lib/api.ts.
+export interface AdminAgent {
+  id: string;
+  name: string;
+}
+
+export type AdminAssignments = Record<string, string[]>;
+
+export type GmailConnectionStatus = "disconnected" | "connected";
+
+export interface GmailConnection {
+  status: GmailConnectionStatus;
+  connectedMailbox: string | null;
+  connectedEmail: string | null;
+  connectedAt: string | null;
+}
