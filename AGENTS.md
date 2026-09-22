@@ -67,6 +67,13 @@ inward (routes, then services, then interfaces).
 - `.env.example` - tracked list of settings; copy to the git-ignored `.env`
 - `docs/` - written deliverables: `discovery-brief.md` and `architecture.md`
 - `Front end/prototype.html` - static dashboard prototype
+- `web/` - the agent review page: Next.js (TypeScript, App Router), calling the
+  FastAPI backend directly from the browser (CORS already allows any origin).
+  `app/` holds the routed page and the ported theme (`globals.css`, from
+  `prototypes/theme.css`); `lib/` holds the typed API client (`api.ts`,
+  `types.ts`) and the agent/mailbox/review-queue state (React context);
+  `components/` holds the small, single-responsibility UI pieces (picker,
+  queue and manual-review panels, detail panel, action bar, batch status)
 
 ## Settings
 
@@ -76,6 +83,10 @@ read only in `app/config.py`.
 
 `DATABASE_PATH` is the SQLite file for batches and triage results (default
 `triage.db` in the working directory, git-ignored). It resolves the same way.
+
+`NEXT_PUBLIC_API_URL` is the FastAPI base URL the `web/` app calls (default
+`http://localhost:8000`). It lives in `web/.env.local`, git-ignored like the
+backend's `.env`; a tracked `web/.env.local.example` documents it.
 
 ## Proportional engineering
 
@@ -136,6 +147,15 @@ Windows, from the project root.
 Ollama must be running with the models named in `app/config.py` available before chat
 or benchmark calls will succeed.
 
+Agent review page (`web/`), Windows, from `web/`.
+
+- Install dependencies (once): `npm install`
+- Dev server: `npm run dev` (`http://localhost:3000`; needs the FastAPI server
+  running for its API calls to succeed)
+- Build: `npm run build`
+- Lint: `npm run lint`
+- Test: none configured (see Testing)
+
 ## Testing
 
 pytest is set up and the `test` command above is the gate. The suite covers
@@ -157,5 +177,9 @@ the real `data/northport_emails.csv` (structure, labels, cleaner round trip). Th
 shared fake `ILLMClient` is `tests/fakes.py`.
 The other `OllamaClient` methods, `benchmark_runner`, and `resource_monitor` are not covered. Do not unit test live Ollama,
 `nvidia-smi`, or the static dashboard; verify those by running the app.
+
+`web/` has no JS test runner; the same rule applies. `npm run build` (TypeScript
+check plus the Next.js build) is its gate. Verify its behavior by running
+`npm run dev` against the live FastAPI server.
 
 No `Verify` command or GitHub workflow exists yet.
