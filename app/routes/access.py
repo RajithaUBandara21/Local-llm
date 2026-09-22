@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Header
 
 from app.dependencies import get_access_service
-from app.schemas import Agent, MailboxEmail
+from app.schemas import Agent, MailboxEmail, ReviewAction, ReviewActionRequest
 from app.services.access import AccessService
 
 router = APIRouter()
@@ -28,3 +28,14 @@ def list_mailbox_emails_endpoint(
     service: AccessService = Depends(get_access_service)
 ):
     return service.emails(x_agent_id, mailbox, batch_id)
+
+
+@router.post("/api/mailboxes/{mailbox}/emails/{email_id}/review", response_model=ReviewAction)
+def review_email_endpoint(
+    mailbox: str,
+    email_id: int,
+    request: ReviewActionRequest,
+    x_agent_id: str | None = Header(default=None),
+    service: AccessService = Depends(get_access_service)
+):
+    return service.review(x_agent_id, mailbox, email_id, request.action, request.edited_reply)

@@ -263,3 +263,42 @@ def test_a_mailbox_read_rebuilds_each_stored_outcome(repo):
     assert by_id[failed.id].triage.status == "failed"
     assert by_id[failed.id].triage.attempts == 1
     assert by_id[unprocessed.id].triage is None
+
+
+def test_an_email_with_no_review_action_has_none(repo):
+    batch_id = repo.create_batch("mail.csv", [make_email(1, "support")])
+    (email,) = repo.pending_emails(batch_id)
+
+    assert repo.get_email(email.id).review is None
+    assert repo.list_mailbox_emails("support")[0].review is None
+
+
+def test_a_saved_review_action_appears_as_the_latest_on_both_reads(repo):
+    batch_id = repo.create_batch("mail.csv", [make_email(1, "support")])
+    (email,) = repo.pending_emails(batch_id)
+
+    saved = repo.save_review_action(email.id, "chen", "approve", None)
+
+    assert (saved.email_id, saved.agent_id, saved.action, saved.edited_reply) == (email.id, "chen", "approve", None)
+    for review in (repo.get_email(email.id).review, repo.list_mailbox_emails("support")[0].review):
+        assert (review.id, review.agent_id, review.action) == (saved.id, "chen", "approve")
+
+
+def test_a_second_review_action_becomes_the_latest_and_the_first_is_kept(repo):
+    batch_id = repo.create_batch("mail.csv", [make_email(1, "support")])
+    (email,) = repo.pending_emails(batch_id)
+    repo.save_review_action(email.id, "chen", "reject", None)
+
+    second = repo.save_review_action(email.id, "dana", "edit", "Here is the corrected reply.")
+
+    assert repo.get_email(email.id).review.id == second.id
+    assert (repo.get_email(email.id).review.agent_id, repo.get_email(email.id).review.edited_reply) == (
+        "dana", "Here is the corrected reply.",
+    )
+    assert [row["agent_id"] for row in rows(repo, "SELECT agent_id FROM review_actions ORDER BY id")] == [
+        "chen", "dana",
+    ]
+
+
+def test_get_email_is_none_for_an_unknown_id(repo):
+    assert repo.get_email(999) is None

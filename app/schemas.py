@@ -58,6 +58,7 @@ Category = Literal["refund", "delivery", "billing", "complaint", "inquiry", "spa
 Priority = Literal["urgent", "high", "normal", "low"]
 Flag = Literal["stale_context", "out_of_policy"]
 TriageStatus = Literal["ok", "needs_review", "failed"]
+ReviewActionType = Literal["approve", "edit", "reject"]
 
 NonBlankText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
@@ -139,7 +140,33 @@ class Seed(BaseModel):
     assignments: dict[str, list[str]]
 
 
+class ReviewActionRequest(BaseModel):
+    """An agent's decision on one email's suggested reply."""
+    action: ReviewActionType
+    edited_reply: str | None = None
+
+    @model_validator(mode="after")
+    def _check_edited_reply(self) -> "ReviewActionRequest":
+        has_text = bool((self.edited_reply or "").strip())
+        if self.action == "edit" and not has_text:
+            raise ValueError("edited_reply is required when action is edit")
+        if self.action != "edit" and self.edited_reply is not None:
+            raise ValueError("edited_reply must be null unless action is edit")
+        return self
+
+
+class ReviewAction(BaseModel):
+    """A stored review decision; every action is kept, the latest is shown on MailboxEmail."""
+    id: int
+    email_id: int
+    agent_id: str
+    action: ReviewActionType
+    edited_reply: str | None = None
+    created_at: datetime
+
+
 class MailboxEmail(StoredEmail):
-    """An email as an agent sees it: its batch and the stored triage outcome, if it has one yet."""
+    """An email as an agent sees it: its batch, the stored triage outcome, and the latest review action, if any."""
     batch_id: int
     triage: TriageResponse | None = None
+    review: ReviewAction | None = None

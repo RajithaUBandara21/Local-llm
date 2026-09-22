@@ -11,7 +11,12 @@ from app.routes.benchmark import (
     get_dashboard_metrics_endpoint,
     start_benchmark_endpoint,
 )
-from app.routes.access import list_agents_endpoint, list_mailbox_emails_endpoint, list_mailboxes_endpoint
+from app.routes.access import (
+    list_agents_endpoint,
+    list_mailbox_emails_endpoint,
+    list_mailboxes_endpoint,
+    review_email_endpoint,
+)
 from app.routes.batches import (
     create_batch_endpoint,
     get_batch_endpoint,
@@ -20,7 +25,9 @@ from app.routes.batches import (
 )
 from app.routes.health import health_check
 from app.routes.triage import triage_endpoint
-from app.schemas import Agent, BatchRequest, BenchmarkRequest, BenchmarkSetting, LoadedEmail, Seed, TriageRequest
+from app.schemas import (
+    Agent, BatchRequest, BenchmarkRequest, BenchmarkSetting, LoadedEmail, ReviewActionRequest, Seed, TriageRequest,
+)
 from app.services.access import AccessService
 from app.services.batch import BatchService
 from app.services.benchmark import BenchmarkService
@@ -270,3 +277,24 @@ def test_a_mailbox_read_is_refused_for_an_unassigned_agent_and_without_an_identi
         list_mailboxes_endpoint("zed", service)
 
     assert (denied.value.status_code, anonymous.value.status_code, unknown.value.status_code) == (403, 401, 401)
+
+
+def test_a_review_action_is_passed_through_and_returned(tmp_path):
+    service = make_access_service(tmp_path)
+    (parcel,) = list_mailbox_emails_endpoint("deliveries", None, "chen", service)
+
+    review = review_email_endpoint(
+        "deliveries", parcel.id, ReviewActionRequest(action="approve"), "chen", service
+    )
+
+    assert (review.email_id, review.agent_id, review.action) == (parcel.id, "chen", "approve")
+
+
+def test_a_review_action_from_an_unassigned_agent_is_refused(tmp_path):
+    service = make_access_service(tmp_path)
+    (parcel,) = list_mailbox_emails_endpoint("deliveries", None, "chen", service)
+
+    with pytest.raises(HTTPException) as denied:
+        review_email_endpoint("deliveries", parcel.id, ReviewActionRequest(action="approve"), "asha", service)
+
+    assert denied.value.status_code == 403

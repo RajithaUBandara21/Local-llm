@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 
 from app.repositories.base import IAccessRepository, IBatchRepository
-from app.schemas import Agent, MailboxEmail, Seed
+from app.schemas import Agent, MailboxEmail, ReviewAction, ReviewActionType, Seed
 
 # A mailbox name comes from the URL, so the log keeps only a bounded prefix of it.
 MAX_LOGGED_MAILBOX_CHARS = 200
@@ -30,6 +30,18 @@ class AccessService:
             # The same answer for an unassigned and a nonexistent mailbox, so it reveals nothing about which exist.
             raise HTTPException(status_code=403, detail=f"You do not have access to mailbox '{mailbox}'.")
         return self.batches.list_mailbox_emails(mailbox, batch_id)
+
+    def review(
+        self, agent_id: str | None, mailbox: str, email_id: int, action: ReviewActionType, edited_reply: str | None
+    ) -> ReviewAction:
+        agent = self._identify(agent_id)
+        if not self.access.is_assigned(agent.id, mailbox):
+            self.access.log_denial(agent.id, mailbox[:MAX_LOGGED_MAILBOX_CHARS], "not_assigned")
+            raise HTTPException(status_code=403, detail=f"You do not have access to mailbox '{mailbox}'.")
+        email = self.batches.get_email(email_id)
+        if email is None or email.mailbox != mailbox:
+            raise HTTPException(status_code=404, detail=f"No email '{email_id}' in mailbox '{mailbox}'.")
+        return self.batches.save_review_action(email_id, agent.id, action, edited_reply)
 
     def _identify(self, agent_id: str | None) -> Agent:
         agent = self.access.get_agent(agent_id.strip()) if agent_id else None

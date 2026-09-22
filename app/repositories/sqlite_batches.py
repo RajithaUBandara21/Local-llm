@@ -4,7 +4,9 @@ from pathlib import Path
 
 from app.repositories.base import IBatchRepository
 from app.repositories.sqlite_connection import connect
-from app.schemas import BatchStatus, LoadedEmail, MailboxEmail, StoredEmail, TriageResponse, TriageResult
+from app.schemas import (
+    BatchStatus, LoadedEmail, MailboxEmail, ReviewAction, ReviewActionType, StoredEmail, TriageResponse, TriageResult,
+)
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS batches (
@@ -49,6 +51,15 @@ CREATE TABLE IF NOT EXISTS decision_log (
     outcome TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+-- Append-only, like decision_log: every agent decision is kept, never overwritten.
+CREATE TABLE IF NOT EXISTS review_actions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email_id INTEGER NOT NULL REFERENCES emails(id),
+    agent_id TEXT NOT NULL,
+    action TEXT NOT NULL CHECK (action IN ('approve', 'edit', 'reject')),
+    edited_reply TEXT,
+    created_at TEXT NOT NULL
+);
 """
 
 # Counts come from the results themselves, so a resume can never leave a counter out of step.
@@ -67,20 +78,37 @@ ORDER BY b.id DESC
 """
 
 
-# A NULL mailbox never equals the parameter, so an email without one is never returned.
-MAILBOX_EMAILS_QUERY = """
+# Shared by both mailbox listing and a single-email read, so the row shape and its mapper stay one thing.
+# The correlated subquery picks each email's highest-id review action; a plain SQLite join keeps it
+# portable rather than relying on window functions.
+EMAIL_SELECT = """
 SELECT e.id, e.batch_id, e.mailbox, e.sender, e.subject, e.body_clean, e.received_at,
        r.status, r.model, r.attempts, r.latency_sec, r.category, r.priority, r.summary,
-       r.suggested_reply, r.confidence, r.flags, r.flag_reason, r.failure_reason
+       r.suggested_reply, r.confidence, r.flags, r.flag_reason, r.failure_reason,
+       rv.id AS review_id, rv.agent_id AS review_agent_id, rv.action AS review_action,
+       rv.edited_reply AS review_edited_reply, rv.created_at AS review_created_at
 FROM emails e
 LEFT JOIN triage_results r ON r.email_id = e.id
-WHERE e.mailbox = ? {batch_filter}
-ORDER BY e.id
+LEFT JOIN review_actions rv ON rv.id = (SELECT MAX(id) FROM review_actions WHERE email_id = e.id)
 """
+
+# A NULL mailbox never equals the parameter, so an email without one is never returned.
+MAILBOX_EMAILS_QUERY = EMAIL_SELECT + "WHERE e.mailbox = ? {batch_filter} ORDER BY e.id"
+
+EMAIL_BY_ID_QUERY = EMAIL_SELECT + "WHERE e.id = ?"
 
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _review_action(row) -> ReviewAction | None:
+    if row["review_id"] is None:
+        return None
+    return ReviewAction(
+        id=row["review_id"], email_id=row["id"], agent_id=row["review_agent_id"],
+        action=row["review_action"], edited_reply=row["review_edited_reply"], created_at=row["review_created_at"],
+    )
 
 
 def _mailbox_email(row) -> MailboxEmail:
@@ -100,6 +128,7 @@ def _mailbox_email(row) -> MailboxEmail:
     return MailboxEmail(
         id=row["id"], batch_id=row["batch_id"], mailbox=row["mailbox"], sender=row["sender"],
         subject=row["subject"], body_clean=row["body_clean"], received_at=row["received_at"], triage=triage,
+        review=_review_action(row),
     )
 
 
@@ -191,3 +220,24 @@ class SQLiteBatchRepository(IBatchRepository):
         with connect(self.path) as db:
             rows = db.execute(sql, params).fetchall()
         return [_mailbox_email(row) for row in rows]
+
+    def get_email(self, email_id: int) -> MailboxEmail | None:
+        with connect(self.path) as db:
+            row = db.execute(EMAIL_BY_ID_QUERY, (email_id,)).fetchone()
+        return _mailbox_email(row) if row else None
+
+    def save_review_action(
+        self, email_id: int, agent_id: str, action: ReviewActionType, edited_reply: str | None
+    ) -> ReviewAction:
+        now = _now()
+        with connect(self.path) as db:
+            cursor = db.execute(
+                "INSERT INTO review_actions (email_id, agent_id, action, edited_reply, created_at) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (email_id, agent_id, action, edited_reply, now),
+            )
+            review_id = cursor.lastrowid
+        return ReviewAction(
+            id=review_id, email_id=email_id, agent_id=agent_id, action=action,
+            edited_reply=edited_reply, created_at=now,
+        )

@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import pytest
 from pydantic import ValidationError
 
-from app.schemas import BatchRequest, BatchStatus, LoadedEmail, StoredEmail
+from app.schemas import BatchRequest, BatchStatus, LoadedEmail, ReviewActionRequest, StoredEmail
 
 
 def test_a_batch_request_needs_a_file_name():
@@ -44,3 +44,24 @@ def test_a_stored_email_is_a_loaded_email_with_an_id():
 
     assert isinstance(email, LoadedEmail)
     assert email.id == 7
+
+
+@pytest.mark.parametrize("action", ["approve", "reject"])
+def test_approve_and_reject_need_no_edited_reply(action):
+    assert ReviewActionRequest(action=action).edited_reply is None
+
+
+def test_edit_needs_a_non_blank_edited_reply():
+    assert ReviewActionRequest(action="edit", edited_reply="Here is the fix.").edited_reply == "Here is the fix."
+
+
+@pytest.mark.parametrize("edited_reply", [None, "", "   "])
+def test_edit_without_a_real_edited_reply_is_rejected(edited_reply):
+    with pytest.raises(ValidationError):
+        ReviewActionRequest(action="edit", edited_reply=edited_reply)
+
+
+@pytest.mark.parametrize("action", ["approve", "reject"])
+def test_an_edited_reply_on_approve_or_reject_is_rejected(action):
+    with pytest.raises(ValidationError):
+        ReviewActionRequest(action=action, edited_reply="Should not be here.")

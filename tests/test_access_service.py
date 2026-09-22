@@ -129,6 +129,58 @@ def test_the_batch_filter_is_passed_through(service):
     assert service.emails("chen", "deliveries", 99) == []
 
 
+def test_an_assigned_agent_can_approve_and_reject_with_no_edited_reply(service):
+    (parcel,) = service.emails("chen", "deliveries")
+
+    approved = service.review("chen", "deliveries", parcel.id, "approve", None)
+    rejected = service.review("dana", "deliveries", parcel.id, "reject", None)
+
+    assert (approved.agent_id, approved.action, approved.edited_reply) == ("chen", "approve", None)
+    assert (rejected.agent_id, rejected.action, rejected.edited_reply) == ("dana", "reject", None)
+    assert service.emails("chen", "deliveries")[0].review.action == "reject"
+
+
+def test_an_assigned_agent_can_edit_with_a_new_reply(service):
+    (parcel,) = service.emails("chen", "deliveries")
+
+    edited = service.review("chen", "deliveries", parcel.id, "edit", "We found your parcel.")
+
+    assert (edited.action, edited.edited_reply) == ("edit", "We found your parcel.")
+    assert service.emails("chen", "deliveries")[0].review.edited_reply == "We found your parcel."
+
+
+def test_reviewing_from_an_unassigned_mailbox_is_refused_with_no_row_written_and_the_denial_is_logged(service):
+    (parcel,) = service.emails("chen", "deliveries")
+
+    error = refused(lambda: service.review("asha", "deliveries", parcel.id, "approve", None))
+
+    assert error.status_code == 403
+    assert denials(service) == [{"agent_id": "asha", "mailbox": "deliveries", "reason": "not_assigned"}]
+
+
+@pytest.mark.parametrize("agent_id", [None, "", "zed"])
+def test_reviewing_needs_a_known_agent(service, agent_id):
+    (parcel,) = service.emails("chen", "deliveries")
+
+    error = refused(lambda: service.review(agent_id, "deliveries", parcel.id, "approve", None))
+
+    assert error.status_code == 401
+
+
+def test_reviewing_an_unknown_email_is_a_404(service):
+    error = refused(lambda: service.review("chen", "deliveries", 9999, "approve", None))
+
+    assert error.status_code == 404
+
+
+def test_reviewing_an_email_through_the_wrong_mailbox_is_a_404_even_when_the_agent_is_assigned_to_both(service):
+    (refund,) = service.emails("asha", "refunds")
+
+    error = refused(lambda: service.review("asha", "support", refund.id, "approve", None))
+
+    assert error.status_code == 404
+
+
 def test_seeding_twice_does_not_duplicate_and_a_new_seed_replaces_permissions(service):
     service.seed(SEED)
     assert service.mailboxes("asha") == ["refunds", "support"]

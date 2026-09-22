@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 
-from app.schemas import Agent, BatchStatus, LoadedEmail, MailboxEmail, Seed, StoredEmail, TriageResponse
+from app.schemas import (
+    Agent, BatchStatus, LoadedEmail, MailboxEmail, ReviewAction, ReviewActionType, Seed, StoredEmail, TriageResponse,
+)
 
 
 class IMetricsRepository(ABC):
@@ -38,6 +40,16 @@ class IBatchRepository(ABC):
     @abstractmethod
     def list_mailbox_emails(self, mailbox: str, batch_id: int | None = None) -> list[MailboxEmail]:
         """Emails of one mailbox in email id order, each with its stored result or none."""
+
+    @abstractmethod
+    def get_email(self, email_id: int) -> MailboxEmail | None:
+        """One email with its stored triage result and latest review action, or None if it does not exist."""
+
+    @abstractmethod
+    def save_review_action(
+        self, email_id: int, agent_id: str, action: ReviewActionType, edited_reply: str | None
+    ) -> ReviewAction:
+        """Append one review action for the email and return it; earlier actions are kept."""
 
 
 class IAccessRepository(ABC):
