@@ -2,6 +2,7 @@ import json
 
 import pytest
 from fastapi import BackgroundTasks, HTTPException
+from pydantic import ValidationError
 
 from app.repositories.base import IMetricsRepository
 from app.repositories.sqlite_access import SQLiteAccessRepository
@@ -13,10 +14,18 @@ from app.routes.benchmark import (
     start_benchmark_endpoint,
 )
 from app.routes.access import (
+    assign_mailbox_endpoint,
+    create_agent_endpoint,
+    create_mailbox_endpoint,
+    delete_agent_endpoint,
+    delete_mailbox_endpoint,
     list_agents_endpoint,
+    list_all_mailboxes_endpoint,
     list_mailbox_emails_endpoint,
     list_mailboxes_endpoint,
+    rename_agent_endpoint,
     review_email_endpoint,
+    unassign_mailbox_endpoint,
 )
 from app.routes.batches import (
     bulk_insert_endpoint,
@@ -29,7 +38,8 @@ from app.routes.batches import (
 from app.routes.health import health_check
 from app.routes.triage import triage_endpoint
 from app.schemas import (
-    Agent, BatchRequest, BenchmarkRequest, BenchmarkSetting, LoadedEmail, ReviewActionRequest, Seed, TriageRequest,
+    Agent, AgentRenameRequest, BatchRequest, BenchmarkRequest, BenchmarkSetting, LoadedEmail, MailboxCreateRequest,
+    ReviewActionRequest, Seed, TriageRequest,
 )
 from app.services.access import AccessService
 from app.services.batch import BatchService
@@ -356,3 +366,76 @@ def test_a_review_action_from_an_unassigned_agent_is_refused(tmp_path):
         review_email_endpoint("deliveries", parcel.id, ReviewActionRequest(action="approve"), "asha", service)
 
     assert denied.value.status_code == 403
+
+
+def test_create_agent_endpoint_returns_the_created_agent_and_rejects_a_duplicate(tmp_path):
+    service = make_access_service(tmp_path)
+
+    created = create_agent_endpoint(Agent(id="priya", name="Priya"), service)
+
+    assert created == Agent(id="priya", name="Priya")
+    with pytest.raises(HTTPException) as duplicate:
+        create_agent_endpoint(Agent(id="priya", name="Priya"), service)
+    assert duplicate.value.status_code == 409
+
+
+@pytest.mark.parametrize("blank", ["", "   "])
+def test_blank_agent_or_mailbox_names_are_rejected_by_request_validation_before_the_handler_runs(blank):
+    # NonBlankText on the request body models is the actual HTTP-reachable guard (a 422 from
+    # FastAPI's request validation); the service layer never sees a blank value to check itself.
+    with pytest.raises(ValidationError):
+        Agent(id=blank, name="Name")
+    with pytest.raises(ValidationError):
+        Agent(id="id", name=blank)
+    with pytest.raises(ValidationError):
+        AgentRenameRequest(name=blank)
+    with pytest.raises(ValidationError):
+        MailboxCreateRequest(name=blank)
+
+
+def test_rename_agent_endpoint_returns_the_updated_agent_and_404s_unknown(tmp_path):
+    service = make_access_service(tmp_path)
+
+    renamed = rename_agent_endpoint("chen", AgentRenameRequest(name="Chen Wu"), service)
+
+    assert renamed == Agent(id="chen", name="Chen Wu")
+    with pytest.raises(HTTPException) as missing:
+        rename_agent_endpoint("zed", AgentRenameRequest(name="Zed"), service)
+    assert missing.value.status_code == 404
+
+
+def test_delete_agent_endpoint_is_idempotent(tmp_path):
+    service = make_access_service(tmp_path)
+
+    assert delete_agent_endpoint("chen", service) is None
+    assert delete_agent_endpoint("chen", service) is None
+    assert "chen" not in [agent.id for agent in list_agents_endpoint(service)]
+
+
+def test_admin_mailbox_endpoints_list_create_and_delete(tmp_path):
+    service = make_access_service(tmp_path)
+
+    assert list_all_mailboxes_endpoint(service) == ["deliveries", "support"]
+
+    created = create_mailbox_endpoint(MailboxCreateRequest(name="billing"), service)
+    assert created == {"name": "billing"}
+    assert list_all_mailboxes_endpoint(service) == ["billing", "deliveries", "support"]
+
+    with pytest.raises(HTTPException) as duplicate:
+        create_mailbox_endpoint(MailboxCreateRequest(name="billing"), service)
+    assert duplicate.value.status_code == 409
+
+    assert delete_mailbox_endpoint("billing", service) is None
+    assert list_all_mailboxes_endpoint(service) == ["deliveries", "support"]
+
+
+def test_assign_and_unassign_mailbox_endpoints_are_idempotent(tmp_path):
+    service = make_access_service(tmp_path)
+
+    assert assign_mailbox_endpoint("support", "chen", service) is None
+    assert assign_mailbox_endpoint("support", "chen", service) is None
+    assert list_mailboxes_endpoint("chen", service) == ["deliveries", "support"]
+
+    assert unassign_mailbox_endpoint("support", "chen", service) is None
+    assert unassign_mailbox_endpoint("support", "chen", service) is None
+    assert list_mailboxes_endpoint("chen", service) == ["deliveries"]

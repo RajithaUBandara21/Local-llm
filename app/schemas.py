@@ -134,6 +134,14 @@ class Agent(BaseModel):
     name: NonBlankText
 
 
+class AgentRenameRequest(BaseModel):
+    name: NonBlankText
+
+
+class MailboxCreateRequest(BaseModel):
+    name: NonBlankText
+
+
 class Seed(BaseModel):
     """Agents and which of them may read each mailbox, as loaded from the seed file."""
     agents: list[Agent]

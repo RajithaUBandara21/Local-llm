@@ -190,3 +190,57 @@ def test_seeding_twice_does_not_duplicate_and_a_new_seed_replaces_permissions(se
     assert service.mailboxes("asha") == ["deliveries"]
     assert refused(lambda: service.emails("asha", "support")).status_code == 403
     assert [email.subject for email in service.emails("asha", "deliveries")] == ["parcel one"]
+
+
+def test_create_agent_succeeds_and_rejects_a_duplicate_id(service):
+    created = service.create_agent("priya", "Priya")
+
+    assert created == Agent(id="priya", name="Priya")
+    assert service.agents()[-1] == Agent(id="priya", name="Priya")
+    assert refused(lambda: service.create_agent("priya", "Priya Again")).status_code == 409
+
+
+def test_rename_agent_succeeds_and_404s_for_an_unknown_id(service):
+    renamed = service.rename_agent("ben", "Benjamin")
+
+    assert renamed == Agent(id="ben", name="Benjamin")
+    assert refused(lambda: service.rename_agent("zed", "Zed")).status_code == 404
+
+
+def test_delete_agent_is_idempotent_and_clears_assignments(service):
+    service.delete_agent("asha")
+    service.delete_agent("asha")
+
+    # The agent no longer exists at all, so identification itself fails (401), not the
+    # assignment check (403); a lingering assignment row would still show up as 403.
+    assert refused(lambda: service.emails("asha", "support")).status_code == 401
+
+
+def test_list_mailboxes_returns_every_mailbox(service):
+    assert service.list_mailboxes() == ["deliveries", "refunds", "support"]
+
+
+def test_create_mailbox_succeeds_and_rejects_a_duplicate(service):
+    created = service.create_mailbox("billing")
+
+    assert created == "billing"
+    assert service.list_mailboxes() == ["billing", "deliveries", "refunds", "support"]
+    assert refused(lambda: service.create_mailbox("billing")).status_code == 409
+
+
+def test_delete_mailbox_is_idempotent(service):
+    service.delete_mailbox("support")
+    service.delete_mailbox("support")
+
+    assert service.list_mailboxes() == ["deliveries", "refunds"]
+    assert service.mailboxes("asha") == ["refunds"]
+
+
+def test_assign_and_unassign_are_idempotent(service):
+    service.assign("chen", "refunds")
+    service.assign("chen", "refunds")
+    assert service.mailboxes("chen") == ["deliveries", "refunds", "support"]
+
+    service.unassign("chen", "refunds")
+    service.unassign("chen", "refunds")
+    assert service.mailboxes("chen") == ["deliveries", "support"]

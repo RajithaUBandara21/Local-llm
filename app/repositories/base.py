@@ -77,3 +77,35 @@ class IAccessRepository(ABC):
 
     @abstractmethod
     def log_denial(self, agent_id: str, mailbox: str, reason: str) -> None: pass
+
+    @abstractmethod
+    def list_mailboxes(self) -> list[str]:
+        """Every mailbox that exists, alphabetical."""
+
+    @abstractmethod
+    def create_mailbox(self, name: str) -> None:
+        """Add a mailbox; raises sqlite3.IntegrityError on a duplicate name."""
+
+    @abstractmethod
+    def delete_mailbox(self, name: str) -> None:
+        """Remove the mailbox and its assignment rows; a no-op if it does not exist."""
+
+    @abstractmethod
+    def create_agent(self, agent: Agent) -> None:
+        """Add an agent; raises sqlite3.IntegrityError on a duplicate id."""
+
+    @abstractmethod
+    def rename_agent(self, agent_id: str, name: str) -> Agent:
+        """Update the agent's name and return it; raises KeyError if the agent does not exist."""
+
+    @abstractmethod
+    def delete_agent(self, agent_id: str) -> None:
+        """Remove the agent and its assignment rows; a no-op if it does not exist."""
+
+    @abstractmethod
+    def assign(self, agent_id: str, mailbox: str) -> None:
+        """Add the assignment; a no-op if it already exists."""
+
+    @abstractmethod
+    def unassign(self, agent_id: str, mailbox: str) -> None:
+        """Remove the assignment; a no-op if it does not exist."""

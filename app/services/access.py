@@ -1,3 +1,5 @@
+import sqlite3
+
 from fastapi import HTTPException
 
 from app.repositories.base import IAccessRepository, IBatchRepository
@@ -50,3 +52,38 @@ class AccessService:
                 status_code=401, detail="Pick an agent: send a known agent id in the X-Agent-Id header."
             )
         return agent
+
+    def create_agent(self, agent_id: str, name: str) -> Agent:
+        try:
+            self.access.create_agent(Agent(id=agent_id, name=name))
+        except sqlite3.IntegrityError:
+            raise HTTPException(status_code=409, detail=f"Agent '{agent_id}' already exists.")
+        return Agent(id=agent_id, name=name)
+
+    def rename_agent(self, agent_id: str, name: str) -> Agent:
+        try:
+            return self.access.rename_agent(agent_id, name)
+        except KeyError:
+            raise HTTPException(status_code=404, detail=f"Agent '{agent_id}' not found.")
+
+    def delete_agent(self, agent_id: str) -> None:
+        self.access.delete_agent(agent_id)
+
+    def list_mailboxes(self) -> list[str]:
+        return self.access.list_mailboxes()
+
+    def create_mailbox(self, name: str) -> str:
+        try:
+            self.access.create_mailbox(name)
+        except sqlite3.IntegrityError:
+            raise HTTPException(status_code=409, detail=f"Mailbox '{name}' already exists.")
+        return name
+
+    def delete_mailbox(self, name: str) -> None:
+        self.access.delete_mailbox(name)
+
+    def assign(self, agent_id: str, mailbox: str) -> None:
+        self.access.assign(agent_id, mailbox)
+
+    def unassign(self, agent_id: str, mailbox: str) -> None:
+        self.access.unassign(agent_id, mailbox)
