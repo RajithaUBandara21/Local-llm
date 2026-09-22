@@ -688,3 +688,50 @@ body {
   color: var(--status-failed);
   border-color: var(--status-failed);
 }
+
+/* ---------- bulk-insert test view ---------- */
+.layout-single {
+  grid-template-columns: 1fr;
+}
+.bulk-panel {
+  padding-bottom: 16px;
+}
+.bulk-notice {
+  margin: 12px 16px 0;
+  padding: 10px 12px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--muted);
+}
+.bulk-actions {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px 0;
+}
+.badge-mock {
+  background: var(--flag-bg);
+  color: var(--flag-text);
+}
+.bulk-list {
+  margin-top: 8px;
+}
+/* Mock rows reuse .queue-row and its descendant classes (row-main, row-top,
+   sender, subject, row-tags) for visual parity with the live queue; these
+   two rules undo the button-style cursor/hover since a mock row isn't
+   clickable. */
+.queue-row.bulk-mock-row {
+  cursor: default;
+}
+.queue-row.bulk-mock-row:hover {
+  background: none;
+}
+.dot-mock {
+  background: var(--faint);
+}
+.received-at {
+  font-size: 11px;
+  color: var(--faint);
+  flex-shrink: 0;
+}

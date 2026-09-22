@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { AgentProvider } from "@/lib/agent-context";
 import { MailboxProvider } from "@/lib/mailbox-context";
 import { ReviewQueueProvider } from "@/lib/review-queue-context";
+import { BulkInsertProvider } from "@/lib/bulk-insert-context";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,7 +16,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body>
         <AgentProvider>
           <MailboxProvider>
-            <ReviewQueueProvider>{children}</ReviewQueueProvider>
+            <BulkInsertProvider>
+              <ReviewQueueProvider>{children}</ReviewQueueProvider>
+            </BulkInsertProvider>
           </MailboxProvider>
         </AgentProvider>
       </body>

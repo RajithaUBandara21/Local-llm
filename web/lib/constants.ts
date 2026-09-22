@@ -18,3 +18,11 @@ export const CATEGORIES: Category[] = [
   "spam",
   "other",
 ];
+
+// Fixed size of the mock batch the bulk-insert view (feature 22) generates.
+// Feature 25 owns the real bulk-insert count/shape.
+export const MOCK_BATCH_SIZE = 10;
+
+// Simulated processing time after confirming a mock insert; stands in for
+// the delay a real insert would have, with no backend meaning.
+export const MOCK_INSERT_DELAY_MS = 700;

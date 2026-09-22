@@ -75,3 +75,14 @@ export interface BatchStatus {
   created_at: string;
   finished_at: string | null;
 }
+
+// Client-only mock row for the bulk-insert test view (feature 22). Deliberately
+// distinct from MailboxEmail: it is never triaged or reviewed, never sent to
+// the backend, and never persisted. Feature 25 owns the real bulk-insert shape.
+export interface MockTestEmail {
+  id: string;
+  mailbox: string;
+  sender: string;
+  subject: string;
+  received_at: string;
+}
