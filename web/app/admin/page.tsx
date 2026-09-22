@@ -10,21 +10,36 @@ export default function AdminPage() {
     <>
       <header className="topbar">
         <div className="brand">
-          NorthPort Logistics <span className="sep">/</span> Admin
+          NorthPort <span className="sep">/</span> Admin
         </div>
-        <div className="controls">
-          <Link href="/" className="btn">
-            Back to review page
+        <nav className="nav-tabs">
+          <Link className="nav-tab" href="/">
+            Mail queue
           </Link>
-        </div>
+          <span className="nav-tab active">Admin</span>
+          <Link className="nav-tab" href="/benchmark">
+            Benchmark
+          </Link>
+        </nav>
       </header>
 
-      <div className="admin-layout">
-        <AgentsPanel />
+      <div className="page">
+        <div className="page-header">
+          <div>
+            <h1 className="page-title">Agents &amp; mailboxes</h1>
+            <p className="page-subtitle">
+              Manage support agents, mailboxes, and who can open what.
+            </p>
+          </div>
+        </div>
 
-        <MailboxesPanel />
+        <div className="admin-layout">
+          <AgentsPanel />
 
-        <GmailPanel />
+          <MailboxesPanel />
+
+          <GmailPanel />
+        </div>
       </div>
     </>
   );

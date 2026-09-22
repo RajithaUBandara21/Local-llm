@@ -24,6 +24,7 @@ export function AgentsPanel() {
     <section className="panel">
       <div className="panel-header">
         <h2>Agents</h2>
+        <span className="hint">{agents.length} agents</span>
       </div>
 
       {error && (
@@ -46,60 +47,79 @@ export function AgentsPanel() {
           {agents.length === 0 ? (
             <p className="empty-state">No agents yet.</p>
           ) : (
-            <ul className="admin-list">
-              {agents.map((agent) => (
-                <li key={agent.id} className="admin-row">
-                  <span className="admin-row-id">{agent.id}</span>
-                  <input
-                    className="admin-input"
-                    type="text"
-                    value={agent.name}
-                    onChange={(e) => renameAgent(agent.id, e.target.value)}
-                    aria-label={`Name for agent ${agent.id}`}
-                  />
-                  <button
-                    type="button"
-                    className="btn btn-reject"
-                    onClick={() => removeAgent(agent.id)}
-                  >
-                    Delete
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Id</th>
+                  <th>Name</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {agents.map((agent) => (
+                  <tr key={agent.id}>
+                    <td className="cell-mono">{agent.id}</td>
+                    <td>
+                      <input
+                        className="admin-input"
+                        type="text"
+                        value={agent.name}
+                        onChange={(e) => renameAgent(agent.id, e.target.value)}
+                        aria-label={`Name for agent ${agent.id}`}
+                      />
+                    </td>
+                    <td className="table-actions">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-danger"
+                        onClick={() => removeAgent(agent.id)}
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
 
-          <div className="admin-add-form">
-            <input
-              className="admin-input"
-              type="text"
-              placeholder="agent id"
-              value={newId}
-              onChange={(e) => setNewId(e.target.value)}
-              aria-label="New agent id"
-            />
-            <input
-              className="admin-input"
-              type="text"
-              placeholder="display name"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              aria-label="New agent display name"
-            />
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={!canAdd}
-              onClick={handleAdd}
-            >
-              Add agent
-            </button>
+          <div className="add-form">
+            <div className="form-row">
+              <div className="field">
+                <label htmlFor="new-agent-id">Agent id</label>
+                <input
+                  id="new-agent-id"
+                  type="text"
+                  placeholder="e.g. priya"
+                  value={newId}
+                  onChange={(e) => setNewId(e.target.value)}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="new-agent-name">Display name</label>
+                <input
+                  id="new-agent-name"
+                  type="text"
+                  placeholder="e.g. Priya"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                />
+              </div>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={!canAdd}
+                onClick={handleAdd}
+              >
+                Add agent
+              </button>
+            </div>
+            {duplicateId && trimmedId.length > 0 && (
+              <p className="admin-form-error">
+                Agent id &quot;{trimmedId}&quot; already exists.
+              </p>
+            )}
           </div>
-          {duplicateId && trimmedId.length > 0 && (
-            <p className="admin-form-error">
-              Agent id &quot;{trimmedId}&quot; already exists.
-            </p>
-          )}
         </>
       )}
     </section>

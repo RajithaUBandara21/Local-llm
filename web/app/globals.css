@@ -1,5 +1,7 @@
-/* Ported from prototypes/theme.css - the durable output of /prototype.
-   Light, clean, dense support-triage look. */
+/* Migrated onto prototypes/theme.css's vocabulary (page shell, nav-tabs,
+   data-table, status-pill, field) so every screen shares one look. Existing
+   review-queue/detail primitives that have no theme.css equivalent
+   (queue-row, badge, detail-*, action-bar) are kept alongside it. */
 
 :root {
   /* surfaces */
@@ -95,6 +97,34 @@ body {
   color: var(--faint);
   font-weight: 400;
   margin: 0 6px;
+}
+.nav-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 3px;
+}
+.nav-tab {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.nav-tab:hover {
+  color: var(--text);
+}
+.nav-tab.active {
+  background: var(--accent);
+  color: var(--accent-ink);
 }
 
 .controls {
@@ -236,7 +266,33 @@ body {
   background: rgba(255, 255, 255, 0.28);
 }
 
-/* ---------- layout ---------- */
+/* ---------- generic page shell ---------- */
+.page {
+  padding: 20px 24px 40px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.page-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+.page-title {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+.page-subtitle {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 4px 0 0;
+}
+
+/* ---------- layout (queue + detail, two columns) ---------- */
 .layout {
   display: grid;
   grid-template-columns: minmax(360px, 460px) 1fr;
@@ -249,6 +305,11 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
+  margin-bottom: 16px;
+}
+.layout .panel,
+.admin-layout .panel {
+  margin-bottom: 0;
 }
 .panel-header {
   display: flex;
@@ -256,6 +317,8 @@ body {
   justify-content: space-between;
   padding: 12px 16px;
   border-bottom: 1px solid var(--border);
+  gap: 12px;
+  flex-wrap: wrap;
 }
 .panel-header h2 {
   margin: 0;
@@ -268,6 +331,9 @@ body {
 .panel-header .hint {
   font-size: 12px;
   color: var(--faint);
+}
+.panel-body {
+  padding: 16px;
 }
 
 /* ---------- queue rows ---------- */
@@ -353,6 +419,7 @@ body {
   flex-wrap: wrap;
 }
 
+/* ---------- badges and pills ---------- */
 .badge {
   display: inline-block;
   font-size: 11px;
@@ -360,6 +427,10 @@ body {
   padding: 2px 8px;
   border-radius: 999px;
   text-transform: capitalize;
+}
+.badge-mailbox {
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 .badge-urgent {
   background: var(--priority-urgent-bg);
@@ -432,11 +503,13 @@ body {
   background: var(--status-review-bg);
   color: var(--status-review);
 }
-.status-pill.failed {
+.status-pill.failed,
+.status-pill.invalid {
   background: var(--status-failed-bg);
   color: var(--status-failed);
 }
-.status-pill.completed {
+.status-pill.completed,
+.status-pill.connected {
   background: var(--status-ok-bg);
   color: var(--status-ok);
 }
@@ -447,6 +520,10 @@ body {
 .status-pill.paused {
   background: var(--status-review-bg);
   color: var(--status-review);
+}
+.status-pill.disconnected {
+  background: var(--priority-low-bg);
+  color: var(--priority-low);
 }
 
 /* ---------- batch status strip ---------- */
@@ -626,6 +703,8 @@ body {
   margin-top: 4px;
   border-top: 1px solid var(--border);
 }
+
+/* ---------- buttons ---------- */
 .btn {
   font-family: inherit;
   font-size: 13px;
@@ -652,7 +731,8 @@ body {
 .btn-approve:hover {
   opacity: 0.92;
 }
-.btn-reject {
+.btn-reject,
+.btn-danger {
   background: var(--status-failed-bg);
   border-color: var(--status-failed);
   color: var(--status-failed);
@@ -661,6 +741,14 @@ body {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-ink);
+}
+.btn-primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+.btn-sm {
+  padding: 5px 10px;
+  font-size: 12px;
 }
 .action-status {
   font-size: 13px;
@@ -736,6 +824,89 @@ body {
   flex-shrink: 0;
 }
 
+/* ---------- form controls (fields, shared) ---------- */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.field label {
+  font-size: 11px;
+  color: var(--faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.field input[type="text"],
+.field input[type="email"],
+.field input[type="number"],
+.field select {
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+}
+.field input:focus,
+.field select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.form-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+.form-row .field {
+  flex: 1;
+  min-width: 160px;
+}
+
+/* ---------- data table (admin + benchmark) ---------- */
+table.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.data-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.data-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.data-table tbody tr:hover {
+  background: var(--surface-sunken);
+}
+.data-table .cell-muted {
+  color: var(--muted);
+}
+.data-table .cell-mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+.table-actions {
+  display: flex;
+  gap: 6px;
+}
+
 /* ---------- admin dashboard ---------- */
 .admin-layout {
   display: grid;
@@ -750,63 +921,185 @@ body {
 .admin-panel-body {
   padding: 16px;
 }
-.admin-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.assign-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
 }
-.admin-row {
+.add-form {
+  border-top: 1px solid var(--border);
+  padding: 14px 16px;
+  background: var(--surface-sunken);
+}
+.add-form .form-row {
+  margin-bottom: 0;
+}
+.checkbox-group {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 7px 0;
+}
+.checkbox-group label {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--border);
-}
-.admin-row-id {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--muted);
-  min-width: 70px;
-  flex-shrink: 0;
-}
-.admin-input {
-  font-family: inherit;
+  gap: 6px;
   font-size: 13px;
   color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  padding: 6px 10px;
-  flex: 1;
-  min-width: 0;
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: pointer;
 }
-.admin-add-form {
-  display: flex;
-  gap: 8px;
-  padding: 12px 16px;
-  border-top: 1px solid var(--border);
-}
-.admin-form-error {
-  margin: 0 16px 12px;
-  font-size: 12px;
-  color: var(--status-failed);
-}
-.admin-assignments {
-  padding: 12px 16px 16px;
-  border-top: 1px solid var(--border);
-}
-.admin-checklist {
-  list-style: none;
-  margin: 10px 0 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 6px 16px;
-}
-.admin-checklist-row label {
+.gmail-card {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  flex-wrap: wrap;
+}
+.gmail-card + .gmail-card {
+  border-top: 1px solid var(--border);
+}
+.gmail-account {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.gmail-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+.gmail-meta {
+  font-size: 12px;
+  color: var(--faint);
+  margin-top: 2px;
+}
+.gmail-email {
+  font-size: 14px;
+  font-weight: 600;
+}
+.gmail-disconnected .gmail-icon {
+  background: var(--priority-low-bg);
+  color: var(--priority-low);
+}
+.gmail-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.section-note {
+  font-size: 12px;
+  color: var(--faint);
+  padding: 10px 16px 0;
+}
+
+/* ---------- benchmark screen ----------
+   Matches prototypes/benchmark.html's structure/features, built on this
+   file's shared .page/.panel/.data-table/.field/.status-pill primitives. */
+.run-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 16px;
+}
+.run-bar .field {
+  min-width: 170px;
+}
+.config-list {
+  padding: 0 16px;
+}
+.config-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+}
+.config-row .field {
+  min-width: 170px;
+}
+.config-remove {
+  margin-left: auto;
+}
+.config-add {
+  padding: 4px 0 12px;
+}
+.progress-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  margin-top: 10px;
+}
+.progress-fill {
+  height: 100%;
+  width: 40%;
+  background: var(--accent);
+}
+.progress-fill-indeterminate {
+  animation: benchmark-progress-slide 1.2s ease-in-out infinite;
+}
+@keyframes benchmark-progress-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+.progress-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   gap: 8px;
-  font-size: 13px;
-  cursor: pointer;
+}
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  padding: 16px;
+}
+.summary-stat {
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+}
+.summary-stat .stat-label {
+  font-size: 11px;
+  color: var(--faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+.summary-stat .stat-value {
+  font-size: 18px;
+  font-weight: 600;
+}
+.summary-stat .stat-value.ok {
+  color: var(--status-ok);
+}
+@media (max-width: 720px) {
+  .summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }

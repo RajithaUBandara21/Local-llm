@@ -23,17 +23,23 @@ export default function ReviewPage() {
     <>
       <header className="topbar">
         <div className="brand">
-          NorthPort Logistics <span className="sep">/</span> Agent Review
+          NorthPort <span className="sep">/</span> Mail queue
         </div>
+        <nav className="nav-tabs">
+          <span className="nav-tab active">Mail queue</span>
+          <Link className="nav-tab" href="/admin">
+            Admin
+          </Link>
+          <Link className="nav-tab" href="/benchmark">
+            Benchmark
+          </Link>
+        </nav>
         <div className="controls">
           <AgentPicker />
           <MailboxPicker />
           <QueueModeToggle />
           {isLive && <ViewToggle />}
           {isLive && <FilterBar />}
-          <Link href="/admin" className="btn">
-            Admin
-          </Link>
         </div>
       </header>
 

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
+from app.config import MAX_RUNS_PER_PROMPT, MODELS, RUNS_PER_PROMPT, TEMPERATURES
 from app.dependencies import get_benchmark_service, get_metrics_repository
 from app.repositories.base import IMetricsRepository
 from app.schemas import BenchmarkRequest
@@ -7,6 +8,16 @@ from app.services.benchmark import BenchmarkService
 from app.state import AppState, get_app_state
 
 router = APIRouter()
+
+
+@router.get("/api/benchmark/config")
+def get_benchmark_config_endpoint():
+    return {
+        "models": MODELS,
+        "temperatures": TEMPERATURES,
+        "default_runs_per_prompt": RUNS_PER_PROMPT,
+        "max_runs_per_prompt": MAX_RUNS_PER_PROMPT,
+    }
 
 
 @router.post("/api/benchmark/start")

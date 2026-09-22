@@ -31,50 +31,65 @@ export function MailboxesPanel() {
     <section className="panel">
       <div className="panel-header">
         <h2>Mailboxes</h2>
+        <span className="hint">{mailboxes.length} mailboxes</span>
       </div>
 
       {mailboxes.length === 0 ? (
         <p className="empty-state">No mailboxes yet.</p>
       ) : (
-        <ul className="admin-list">
-          {mailboxes.map((mailbox) => (
-            <li key={mailbox} className="admin-row">
-              <span className="admin-row-id">{mailbox}</span>
-              <button
-                type="button"
-                className="btn btn-reject"
-                onClick={() => handleRemove(mailbox)}
-              >
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Mailbox</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {mailboxes.map((mailbox) => (
+              <tr key={mailbox}>
+                <td className="cell-mono">{mailbox}</td>
+                <td className="table-actions">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-danger"
+                    onClick={() => handleRemove(mailbox)}
+                  >
+                    Remove
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
 
-      <div className="admin-add-form">
-        <input
-          className="admin-input"
-          type="text"
-          placeholder="mailbox name"
-          value={newMailbox}
-          onChange={(e) => setNewMailbox(e.target.value)}
-          aria-label="New mailbox name"
-        />
-        <button
-          type="button"
-          className="btn btn-primary"
-          disabled={!canAdd}
-          onClick={handleAdd}
-        >
-          Add mailbox
-        </button>
+      <div className="add-form">
+        <div className="form-row">
+          <div className="field">
+            <label htmlFor="new-mailbox-name">New mailbox name</label>
+            <input
+              id="new-mailbox-name"
+              type="text"
+              placeholder="e.g. billing"
+              value={newMailbox}
+              onChange={(e) => setNewMailbox(e.target.value)}
+            />
+          </div>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={!canAdd}
+            onClick={handleAdd}
+          >
+            Add mailbox
+          </button>
+        </div>
+        {duplicate && trimmed.length > 0 && (
+          <p className="admin-form-error">
+            Mailbox &quot;{trimmed}&quot; already exists.
+          </p>
+        )}
       </div>
-      {duplicate && trimmed.length > 0 && (
-        <p className="admin-form-error">
-          Mailbox &quot;{trimmed}&quot; already exists.
-        </p>
-      )}
 
       <MailboxAssignmentsPanel
         mailboxes={mailboxes}

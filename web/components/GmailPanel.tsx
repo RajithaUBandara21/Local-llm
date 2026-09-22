@@ -16,32 +16,51 @@ export function GmailPanel() {
     ? selectedMailbox
     : mailboxes[0] ?? null;
 
+  if (mailboxes.length === 0) {
+    return (
+      <section className="panel">
+        <div className="panel-header">
+          <h2>Gmail connection</h2>
+          <span className="hint">Opt-in live mail transport</span>
+        </div>
+        <p className="empty-state">Add a mailbox before connecting Gmail.</p>
+      </section>
+    );
+  }
+
   return (
     <section className="panel">
       <div className="panel-header">
         <h2>Gmail connection</h2>
+        <span className="hint">Opt-in live mail transport</span>
       </div>
-      <div className="admin-panel-body">
-        {status === "connected" ? (
-          <>
-            <p>
-              Connected as <strong>{connectedEmail}</strong> for mailbox{" "}
-              <strong>{connectedMailbox}</strong>.
-            </p>
-            <p className="admin-row-id">
-              Connected at {connectedAt ? new Date(connectedAt).toLocaleString() : ""}
-            </p>
-            <button type="button" className="btn btn-reject" onClick={disconnect}>
+
+      {status === "connected" ? (
+        <div className="gmail-card">
+          <div className="gmail-account">
+            <div className="gmail-icon">G</div>
+            <div>
+              <div className="gmail-email">{connectedEmail}</div>
+              <div className="gmail-meta">
+                Connected {connectedAt ? new Date(connectedAt).toLocaleString() : ""}
+                &middot; {connectedMailbox} mailbox
+              </div>
+            </div>
+          </div>
+          <div className="gmail-actions">
+            <span className="status-pill connected">Connected</span>
+            <button type="button" className="btn btn-danger" onClick={disconnect}>
               Disconnect
             </button>
-          </>
-        ) : (
-          <>
-            {mailboxes.length === 0 ? (
-              <p className="empty-state">Add a mailbox before connecting Gmail.</p>
-            ) : (
-              <div className="control-group">
-                <span className="filter-label">Mailbox</span>
+          </div>
+        </div>
+      ) : (
+        <div className="gmail-card gmail-disconnected">
+          <div className="gmail-account">
+            <div className="gmail-icon">G</div>
+            <div>
+              <div className="gmail-email">Not connected</div>
+              <div className="gmail-meta">
                 <select
                   className="mailbox-select"
                   value={mailboxToConnect ?? ""}
@@ -54,19 +73,26 @@ export function GmailPanel() {
                     </option>
                   ))}
                 </select>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  disabled={connecting || !mailboxToConnect}
-                  onClick={() => mailboxToConnect && connect(mailboxToConnect)}
-                >
-                  {connecting ? "Connecting..." : "Connect"}
-                </button>
               </div>
-            )}
-          </>
-        )}
-      </div>
+            </div>
+          </div>
+          <div className="gmail-actions">
+            <span className="status-pill disconnected">Disconnected</span>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={connecting || !mailboxToConnect}
+              onClick={() => mailboxToConnect && connect(mailboxToConnect)}
+            >
+              {connecting ? "Connecting..." : "Connect Gmail"}
+            </button>
+          </div>
+        </div>
+      )}
+      <p className="section-note">
+        Mock only: OAuth connect/status/disconnect wires to a real Google account
+        in feature 26.
+      </p>
     </section>
   );
 }

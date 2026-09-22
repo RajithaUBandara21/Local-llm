@@ -7,6 +7,7 @@ from app.repositories.base import IMetricsRepository
 from app.repositories.sqlite_access import SQLiteAccessRepository
 from app.repositories.sqlite_batches import SQLiteBatchRepository
 from app.routes.benchmark import (
+    get_benchmark_config_endpoint,
     get_benchmark_status_endpoint,
     get_dashboard_metrics_endpoint,
     start_benchmark_endpoint,
@@ -48,6 +49,17 @@ class FakeRepository(IMetricsRepository):
 
 def test_health_reports_the_service():
     assert health_check() == {"status": "healthy", "service": "Local AI Assistant API"}
+
+
+def test_config_returns_the_models_and_temperatures():
+    from app.config import MAX_RUNS_PER_PROMPT, MODELS, RUNS_PER_PROMPT, TEMPERATURES
+
+    assert get_benchmark_config_endpoint() == {
+        "models": MODELS,
+        "temperatures": TEMPERATURES,
+        "default_runs_per_prompt": RUNS_PER_PROMPT,
+        "max_runs_per_prompt": MAX_RUNS_PER_PROMPT,
+    }
 
 
 def test_start_schedules_the_pipeline_in_the_background():
