@@ -148,6 +148,17 @@ class Seed(BaseModel):
     assignments: dict[str, list[str]]
 
 
+class GmailConnection(BaseModel):
+    """The single stored Gmail connection; never carries the refresh token."""
+    mailbox: str
+    email: str
+    connected_at: datetime
+
+
+class GmailConnectRequest(BaseModel):
+    mailbox: NonBlankText
+
+
 class ReviewActionRequest(BaseModel):
     """An agent's decision on one email's suggested reply."""
     action: ReviewActionType

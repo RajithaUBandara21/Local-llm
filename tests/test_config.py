@@ -74,6 +74,24 @@ def test_unreadable_env_file_gives_no_values(tmp_path):
     assert read_env_file(directory) == {}
 
 
+def test_gmail_settings_default_when_absent(monkeypatch):
+    for name in (
+        "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_OAUTH_REDIRECT_URI",
+        "GMAIL_TOKEN_ENCRYPTION_KEY", "ADMIN_DASHBOARD_URL",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    try:
+        reloaded = importlib.reload(config)
+        assert reloaded.GOOGLE_CLIENT_ID == ""
+        assert reloaded.GOOGLE_CLIENT_SECRET == ""
+        assert reloaded.GOOGLE_OAUTH_REDIRECT_URI == "http://localhost:8000/api/gmail/oauth/callback"
+        assert reloaded.GMAIL_TOKEN_ENCRYPTION_KEY == ""
+        assert reloaded.ADMIN_DASHBOARD_URL == "http://localhost:3000/admin"
+    finally:
+        monkeypatch.undo()
+        importlib.reload(config)
+
+
 def test_base_url_loses_its_trailing_slash_and_derives_the_endpoint_urls(monkeypatch):
     monkeypatch.setenv("OLLAMA_URL", "http://host:1/")
     try:

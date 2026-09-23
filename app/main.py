@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routes import access, assistant, batches, benchmark, health, triage
+from app.routes import access, assistant, batches, benchmark, gmail, health, triage
 from app.startup import seed_directory
 
 
@@ -27,6 +27,7 @@ app.include_router(access.router)
 app.include_router(assistant.router)
 app.include_router(batches.router)
 app.include_router(benchmark.router)
+app.include_router(gmail.router)
 app.include_router(health.router)
 app.include_router(triage.router)
 

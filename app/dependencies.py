@@ -13,6 +13,7 @@ from app.services.access import AccessService
 from app.services.assistant import AssistantService
 from app.services.batch import BatchService
 from app.services.benchmark import BenchmarkService
+from app.services.gmail_oauth import GmailOAuthService
 from app.services.triage import TriageService
 from app.state import AppState, get_app_state
 
@@ -68,3 +69,10 @@ def get_access_service(
     batches: IBatchRepository = Depends(get_batch_repository)
 ) -> AccessService:
     return AccessService(access, batches)
+
+
+def get_gmail_oauth_service(
+    access: IAccessRepository = Depends(get_access_repository),
+    state: AppState = Depends(get_app_state)
+) -> GmailOAuthService:
+    return GmailOAuthService(access, state)

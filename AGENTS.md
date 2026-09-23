@@ -88,6 +88,17 @@ read only in `app/config.py`.
 `http://localhost:8000`). It lives in `web/.env.local`, git-ignored like the
 backend's `.env`; a tracked `web/.env.local.example` documents it.
 
+Gmail OAuth (feature 26b) is configured by four more `.env` settings, all
+optional: `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` (from a Google Cloud
+OAuth client), `GOOGLE_OAUTH_REDIRECT_URI` (default
+`http://localhost:8000/api/gmail/oauth/callback`), and
+`GMAIL_TOKEN_ENCRYPTION_KEY` (a base64 `Fernet` key encrypting the stored
+refresh token at rest). Leaving `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, or
+`GMAIL_TOKEN_ENCRYPTION_KEY` blank disables Gmail connect (503) without
+affecting the rest of the app. `ADMIN_DASHBOARD_URL` (default
+`http://localhost:3000/admin`) is where the OAuth callback redirects the
+browser after connecting.
+
 ## Proportional engineering
 
 Build for established requirements, not hypothetical scale, threats, or future

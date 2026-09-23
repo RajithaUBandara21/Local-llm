@@ -13,6 +13,10 @@ class AppState:
         self.active_batch_id: int | None = None
         # Held while a batch start or resume checks and claims the worker slot.
         self.batch_lock = threading.Lock()
+        # The single in-flight Gmail OAuth attempt, if any; a new connect overwrites it,
+        # so only the most recently started attempt's state token is ever valid.
+        self.pending_gmail_oauth_state: str | None = None
+        self.pending_gmail_oauth_mailbox: str | None = None
 
 
 global_state = AppState()

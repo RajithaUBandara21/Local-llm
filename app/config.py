@@ -39,6 +39,16 @@ DATABASE_PATH = load_setting("DATABASE_PATH", "triage.db")
 OLLAMA_GENERATE_URL = f"{OLLAMA_URL}/api/generate"
 OLLAMA_PS_URL = f"{OLLAMA_URL}/api/ps"
 
+# Gmail OAuth (feature 26b). Empty client id/secret/key means Gmail is not configured;
+# routes that need them return 503 instead of failing at import time.
+GOOGLE_CLIENT_ID = load_setting("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = load_setting("GOOGLE_CLIENT_SECRET", "")
+GOOGLE_OAUTH_REDIRECT_URI = load_setting(
+    "GOOGLE_OAUTH_REDIRECT_URI", "http://localhost:8000/api/gmail/oauth/callback"
+)
+GMAIL_TOKEN_ENCRYPTION_KEY = load_setting("GMAIL_TOKEN_ENCRYPTION_KEY", "")
+ADMIN_DASHBOARD_URL = load_setting("ADMIN_DASHBOARD_URL", "http://localhost:3000/admin")
+
 MODELS = ["llama3.2", "phi-4-Q4", "mistral-7b-q4", "mistral-7b-Q5"]
 TEMPERATURES = [0.0, 0.7]
 RUNS_PER_PROMPT = 3

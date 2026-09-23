@@ -192,3 +192,39 @@ def test_assign_is_a_safe_no_op_for_a_nonexistent_agent_or_mailbox(repo):
     assert rows(repo, "SELECT * FROM mailbox_assignments WHERE agent_id = 'ghost-agent'") == []
     assert rows(repo, "SELECT * FROM mailbox_assignments WHERE mailbox = 'ghost-mailbox'") == []
     assert repo.list_mailboxes() == ["deliveries", "refunds", "support"]
+
+
+def test_get_gmail_connection_is_none_before_any_save(repo):
+    assert repo.get_gmail_connection() is None
+
+
+def test_save_gmail_connection_makes_it_readable(repo):
+    repo.save_gmail_connection("support", "agent@example.com", b"encrypted-token")
+
+    connection = repo.get_gmail_connection()
+    assert connection is not None
+    assert connection.mailbox == "support"
+    assert connection.email == "agent@example.com"
+    assert connection.connected_at is not None
+
+
+def test_save_gmail_connection_replaces_rather_than_duplicates(repo):
+    repo.save_gmail_connection("support", "first@example.com", b"first-token")
+    repo.save_gmail_connection("refunds", "second@example.com", b"second-token")
+
+    assert rows(repo, "SELECT * FROM gmail_connection") == rows(
+        repo, "SELECT * FROM gmail_connection WHERE mailbox = 'refunds'"
+    )
+    connection = repo.get_gmail_connection()
+    assert connection.mailbox == "refunds"
+    assert connection.email == "second@example.com"
+
+
+def test_delete_gmail_connection_removes_it_and_is_a_no_op_when_absent(repo):
+    repo.save_gmail_connection("support", "agent@example.com", b"encrypted-token")
+
+    repo.delete_gmail_connection()
+    assert repo.get_gmail_connection() is None
+
+    repo.delete_gmail_connection()
+    assert repo.get_gmail_connection() is None

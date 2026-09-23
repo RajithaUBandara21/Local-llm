@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 
 from app.schemas import (
-    Agent, BatchStatus, LoadedEmail, MailboxEmail, ReviewAction, ReviewActionType, Seed, StoredEmail, TriageResponse,
+    Agent, BatchStatus, GmailConnection, LoadedEmail, MailboxEmail, ReviewAction, ReviewActionType, Seed, StoredEmail,
+    TriageResponse,
 )
 
 
@@ -109,3 +110,19 @@ class IAccessRepository(ABC):
     @abstractmethod
     def unassign(self, agent_id: str, mailbox: str) -> None:
         """Remove the assignment; a no-op if it does not exist."""
+
+    @abstractmethod
+    def get_gmail_connection(self) -> GmailConnection | None:
+        """The single stored Gmail connection, or None if never connected."""
+
+    @abstractmethod
+    def get_gmail_refresh_token(self) -> bytes | None:
+        """The single stored connection's encrypted refresh token, or None if never connected."""
+
+    @abstractmethod
+    def save_gmail_connection(self, mailbox: str, email: str, encrypted_refresh_token: bytes) -> None:
+        """Replace the single stored Gmail connection with a fresh connected_at."""
+
+    @abstractmethod
+    def delete_gmail_connection(self) -> None:
+        """Remove the stored Gmail connection; a no-op if none exists."""
