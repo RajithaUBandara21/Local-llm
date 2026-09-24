@@ -67,3 +67,6 @@ TRIAGE_MAX_BODY_CHARS = 6000
 
 # Batches load mailbox files from here; the API accepts only a bare file name inside it.
 MAILBOX_DIR = "data"
+
+# Caps a client-uploaded mailbox file, so a mistaken or hostile upload cannot fill the disk.
+MAX_MAILBOX_UPLOAD_BYTES = 20 * 1024 * 1024

@@ -20,7 +20,7 @@ def test_a_batch_status_serializes_with_its_counts():
     created = datetime(2026, 3, 2, 8, 0, tzinfo=timezone.utc)
 
     status = BatchStatus(
-        id=1, source_file="northport_emails.csv", status="running", total=100,
+        id=1, source_file="northport_emails.csv", display_name="northport_emails.csv", status="running", total=100,
         processed=3, ok=2, needs_review=1, failed=0, created_at=created,
     )
 

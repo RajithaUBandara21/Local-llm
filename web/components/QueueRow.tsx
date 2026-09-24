@@ -1,3 +1,4 @@
+import { formatReceivedAtShort } from "@/lib/format";
 import type { ReviewableEmail } from "@/lib/types";
 import { PriorityBadge } from "./PriorityBadge";
 
@@ -37,6 +38,9 @@ export function QueueRow({
                 {flag.replace("_", " ")}
               </span>
             ))}
+            <span className="row-received-at">
+              {formatReceivedAtShort(email.received_at)}
+            </span>
           </div>
         </div>
       </button>

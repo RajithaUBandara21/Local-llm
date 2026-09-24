@@ -1,3 +1,4 @@
+import { formatReceivedAtShort } from "@/lib/format";
 import type { ReviewableEmail } from "@/lib/types";
 
 export function ManualReviewRow({
@@ -24,6 +25,9 @@ export function ManualReviewRow({
         <div className="row-main">
           <div className="row-top">
             <span className="sender">{email.sender}</span>
+            <span className="confidence">
+              {formatReceivedAtShort(email.received_at)}
+            </span>
           </div>
           <div className="subject">{email.subject}</div>
           <div className="mr-note">{email.triage?.failure_reason}</div>

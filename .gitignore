@@ -10,3 +10,7 @@ __pycache__/
 .env
 *.db
 *.db-journal
+
+# Uploaded mailbox files (app/services/batch.py upload_mailbox_file)
+data/upload-*.csv
+data/upload-*.mbox

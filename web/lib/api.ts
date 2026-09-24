@@ -35,8 +35,21 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export function getEmails(): Promise<ReviewableEmail[]> {
-  return apiFetch<ReviewableEmail[]>("/api/emails");
+export interface PageParams {
+  limit?: number;
+  offset?: number;
+}
+
+export function getEmails(
+  batchId?: number,
+  page?: PageParams
+): Promise<ReviewableEmail[]> {
+  const params = new URLSearchParams();
+  if (batchId !== undefined) params.set("batch_id", String(batchId));
+  if (page?.limit !== undefined) params.set("limit", String(page.limit));
+  if (page?.offset !== undefined) params.set("offset", String(page.offset));
+  const query = params.size > 0 ? `?${params.toString()}` : "";
+  return apiFetch<ReviewableEmail[]>(`/api/emails${query}`);
 }
 
 export function submitReview(
@@ -54,8 +67,107 @@ export function submitReview(
   });
 }
 
-export function getBatches(): Promise<BatchStatus[]> {
-  return apiFetch<BatchStatus[]>("/api/batches");
+export function getBatches(page?: PageParams): Promise<BatchStatus[]> {
+  const params = new URLSearchParams();
+  if (page?.limit !== undefined) params.set("limit", String(page.limit));
+  if (page?.offset !== undefined) params.set("offset", String(page.offset));
+  const query = params.size > 0 ? `?${params.toString()}` : "";
+  return apiFetch<BatchStatus[]>(`/api/batches${query}`);
+}
+
+export function createBatch(
+  file: string,
+  receivedAfter?: string,
+  receivedBefore?: string
+): Promise<BatchStatus> {
+  return apiFetch<BatchStatus>("/api/batches", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      file,
+      received_after: receivedAfter || undefined,
+      received_before: receivedBefore || undefined,
+    }),
+  });
+}
+
+export function stopBatch(batchId: number): Promise<BatchStatus> {
+  return apiFetch<BatchStatus>(`/api/batches/${batchId}/stop`, {
+    method: "POST",
+  });
+}
+
+export function resumeBatch(
+  batchId: number,
+  receivedAfter?: string,
+  receivedBefore?: string
+): Promise<BatchStatus> {
+  return apiFetch<BatchStatus>(`/api/batches/${batchId}/resume`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      received_after: receivedAfter || undefined,
+      received_before: receivedBefore || undefined,
+    }),
+  });
+}
+
+export async function deleteBatch(batchId: number): Promise<void> {
+  const response = await fetch(`${BASE_URL}/api/batches/${batchId}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) {
+    throw new ApiError(response.status, response.statusText);
+  }
+}
+
+export function uploadMailboxFile(
+  file: File,
+  name?: string
+): Promise<{ file: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+  if (name) formData.append("name", name);
+  return apiFetch<{ file: string }>("/api/mailbox-files", {
+    method: "POST",
+    body: formData,
+  });
+}
+
+export interface PendingMailboxFile {
+  file: string;
+  display_name: string;
+  created_at: string;
+}
+
+export function getPendingMailboxFiles(): Promise<PendingMailboxFile[]> {
+  return apiFetch<PendingMailboxFile[]>("/api/mailbox-files");
+}
+
+export async function discardPendingMailboxFile(file: string): Promise<void> {
+  const response = await fetch(
+    `${BASE_URL}/api/mailbox-files/${encodeURIComponent(file)}`,
+    { method: "DELETE" }
+  );
+  if (!response.ok) {
+    throw new ApiError(response.status, response.statusText);
+  }
+}
+
+export function previewMailboxFile(
+  file: string
+): Promise<{ received_at: (string | null)[] }> {
+  return apiFetch<{ received_at: (string | null)[] }>(
+    `/api/mailbox-files/${encodeURIComponent(file)}/preview`
+  );
+}
+
+export function previewPendingEmails(
+  batchId: number
+): Promise<{ received_at: (string | null)[] }> {
+  return apiFetch<{ received_at: (string | null)[] }>(
+    `/api/batches/${batchId}/pending-preview`
+  );
 }
 
 export function getBenchmarkConfig(): Promise<BenchmarkConfig> {

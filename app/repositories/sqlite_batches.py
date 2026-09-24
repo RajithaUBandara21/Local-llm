@@ -5,8 +5,8 @@ from pathlib import Path
 from app.repositories.base import IBatchRepository
 from app.repositories.sqlite_connection import connect
 from app.schemas import (
-    BatchStatus, LoadedEmail, ReviewableEmail, ReviewAction, ReviewActionType, StoredEmail, TriageResponse,
-    TriageResult,
+    BatchStatus, LoadedEmail, PendingMailboxFile, ReviewableEmail, ReviewAction, ReviewActionType, StoredEmail,
+    TriageResponse, TriageResult,
 )
 
 SCHEMA = """
@@ -59,11 +59,18 @@ CREATE TABLE IF NOT EXISTS review_actions (
     edited_reply TEXT,
     created_at TEXT NOT NULL
 );
+-- An uploaded mailbox file with no batch started from it yet; its row is deleted once one is,
+-- so a mail set's chosen name survives a page refresh up to that point.
+CREATE TABLE IF NOT EXISTS mailbox_files (
+    file TEXT PRIMARY KEY,
+    display_name TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
 """
 
 # Counts come from the results themselves, so a resume can never leave a counter out of step.
 BATCH_QUERY = """
-SELECT b.id, b.source_file, b.status, b.total, b.created_at, b.finished_at,
+SELECT b.id, b.source_file, b.display_name, b.status, b.total, b.created_at, b.finished_at,
        COUNT(r.email_id) AS processed,
        COALESCE(SUM(r.status = 'ok'), 0) AS ok,
        COALESCE(SUM(r.status = 'needs_review'), 0) AS needs_review,
@@ -140,6 +147,12 @@ class SQLiteBatchRepository(IBatchRepository):
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with connect(self.path) as db:
             db.executescript(SCHEMA)
+            # Added after the initial release; a database created before it existed needs this
+            # column added on top of the CREATE TABLE above, which only runs for a new database.
+            columns = {row["name"] for row in db.execute("PRAGMA table_info(batches)")}
+            if "display_name" not in columns:
+                db.execute("ALTER TABLE batches ADD COLUMN display_name TEXT")
+                db.execute("UPDATE batches SET display_name = source_file WHERE display_name IS NULL")
 
     def create_batch(self, source_file: str, emails: list[LoadedEmail]) -> int:
         rows = [
@@ -150,25 +163,57 @@ class SQLiteBatchRepository(IBatchRepository):
             for email in emails
         ]
         with connect(self.path) as db:
+            # Carry over the name chosen when the file was uploaded, if any, so a mail set keeps
+            # its display name once it becomes a batch instead of falling back to the raw filename.
+            pending = db.execute(
+                "SELECT display_name FROM mailbox_files WHERE file = ?", (source_file,)
+            ).fetchone()
+            display_name = pending["display_name"] if pending else source_file
             cursor = db.execute(
-                "INSERT INTO batches (source_file, total, status, created_at) VALUES (?, ?, 'running', ?)",
-                (source_file, len(emails), _now()),
+                "INSERT INTO batches (source_file, display_name, total, status, created_at) "
+                "VALUES (?, ?, ?, 'running', ?)",
+                (source_file, display_name, len(emails), _now()),
             )
             batch_id = cursor.lastrowid
             db.executemany(
                 "INSERT INTO emails (batch_id, sender, subject, body_clean, received_at) VALUES (?, ?, ?, ?, ?)",
                 [(batch_id, *row) for row in rows],
             )
+            # The file has a batch now, so it is no longer a pending upload.
+            db.execute("DELETE FROM mailbox_files WHERE file = ?", (source_file,))
         return batch_id
+
+    def save_pending_mailbox_file(self, file: str, display_name: str) -> None:
+        with connect(self.path) as db:
+            db.execute(
+                "INSERT OR REPLACE INTO mailbox_files (file, display_name, created_at) VALUES (?, ?, ?)",
+                (file, display_name, _now()),
+            )
+
+    def list_pending_mailbox_files(self) -> list[PendingMailboxFile]:
+        with connect(self.path) as db:
+            rows = db.execute(
+                "SELECT file, display_name, created_at FROM mailbox_files ORDER BY created_at DESC"
+            ).fetchall()
+        return [PendingMailboxFile(**row) for row in rows]
+
+    def delete_pending_mailbox_file(self, file: str) -> None:
+        with connect(self.path) as db:
+            db.execute("DELETE FROM mailbox_files WHERE file = ?", (file,))
 
     def get_batch(self, batch_id: int) -> BatchStatus | None:
         with connect(self.path) as db:
             row = db.execute(BATCH_QUERY.format(where="WHERE b.id = ?"), (batch_id,)).fetchone()
         return BatchStatus(**row) if row else None
 
-    def list_batches(self) -> list[BatchStatus]:
+    def list_batches(self, limit: int | None = None, offset: int = 0) -> list[BatchStatus]:
+        sql = BATCH_QUERY.format(where="")
+        params: tuple = ()
+        if limit is not None:
+            sql += " LIMIT ? OFFSET ?"
+            params = (limit, offset)
         with connect(self.path) as db:
-            rows = db.execute(BATCH_QUERY.format(where="")).fetchall()
+            rows = db.execute(sql, params).fetchall()
         return [BatchStatus(**row) for row in rows]
 
     def pending_emails(self, batch_id: int) -> list[StoredEmail]:
@@ -213,9 +258,14 @@ class SQLiteBatchRepository(IBatchRepository):
                 "UPDATE batches SET status = 'completed', finished_at = ? WHERE id = ?", (_now(), batch_id)
             )
 
-    def list_emails(self, batch_id: int | None = None) -> list[ReviewableEmail]:
+    def list_emails(
+        self, batch_id: int | None = None, limit: int | None = None, offset: int = 0
+    ) -> list[ReviewableEmail]:
         sql = ALL_EMAILS_QUERY.format(batch_filter="" if batch_id is None else "WHERE e.batch_id = ?")
         params = () if batch_id is None else (batch_id,)
+        if limit is not None:
+            sql += " LIMIT ? OFFSET ?"
+            params = (*params, limit, offset)
         with connect(self.path) as db:
             rows = db.execute(sql, params).fetchall()
         return [_reviewable_email(row) for row in rows]

@@ -10,6 +10,8 @@ _LOADERS: dict[str, type[IEmailLoader]] = {
     ".csv": CsvEmailLoader,
 }
 
+SUPPORTED_MAILBOX_EXTENSIONS = frozenset(_LOADERS)
+
 
 def get_email_loader(path: Path) -> IEmailLoader:
     loader_class = _LOADERS.get(path.suffix.lower())

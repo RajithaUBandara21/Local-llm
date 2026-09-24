@@ -58,6 +58,7 @@ export interface ReviewableEmail {
 export interface BatchStatus {
   id: number;
   source_file: string;
+  display_name: string;
   status: "running" | "completed";
   active: boolean;
   total: number;
@@ -69,14 +70,18 @@ export interface BatchStatus {
   finished_at: string | null;
 }
 
-// Client-only mock row for the bulk-insert test view (feature 22). Deliberately
-// distinct from ReviewableEmail: it is never triaged or reviewed, never sent to
-// the backend, and never persisted. Feature 25 owns the real bulk-insert shape.
-export interface MockTestEmail {
+// One mail set queued in the left-side list column: a user-given display name,
+// the uploaded mailbox file's stored server name, and the batch it started
+// once processed (if any).
+export type MailSetStatus = "pending" | "running" | "paused" | "completed" | "failed";
+
+export interface MailSet {
   id: string;
-  sender: string;
-  subject: string;
-  received_at: string;
+  name: string;
+  file: string;
+  status: MailSetStatus;
+  batch: BatchStatus | null;
+  error: string | null;
 }
 
 export type GmailConnectionStatus = "disconnected" | "connected";

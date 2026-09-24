@@ -97,6 +97,58 @@ def test_batches_list_newest_first_and_only_see_their_own_emails(repo):
     assert [email.subject for email in repo.pending_emails(first)] == ["Subject 1"]
 
 
+def test_pending_mailbox_files_are_listed_newest_first_until_discarded(repo):
+    repo.save_pending_mailbox_file("upload-a.csv", "Week 1 inbox")
+    repo.save_pending_mailbox_file("upload-b.csv", "Week 2 inbox")
+
+    pending = repo.list_pending_mailbox_files()
+
+    assert [p.file for p in pending] == ["upload-b.csv", "upload-a.csv"]
+    assert pending[0].display_name == "Week 2 inbox"
+
+    repo.delete_pending_mailbox_file("upload-a.csv")
+    assert [p.file for p in repo.list_pending_mailbox_files()] == ["upload-b.csv"]
+
+    repo.delete_pending_mailbox_file("upload-a.csv")  # no-op the second time
+    assert [p.file for p in repo.list_pending_mailbox_files()] == ["upload-b.csv"]
+
+
+def test_creating_a_batch_clears_its_pending_mailbox_file_record(repo):
+    repo.save_pending_mailbox_file("mail.csv", "My inbox")
+
+    batch_id = repo.create_batch("mail.csv", [make_email(1)])
+
+    assert repo.list_pending_mailbox_files() == []
+    assert repo.get_batch(batch_id).display_name == "My inbox"
+
+
+def test_creating_a_batch_with_no_pending_record_falls_back_to_the_source_file(repo):
+    batch_id = repo.create_batch("mail.csv", [make_email(1)])
+
+    assert repo.get_batch(batch_id).display_name == "mail.csv"
+
+
+def test_list_batches_limit_and_offset_page_through_newest_first(repo):
+    first = repo.create_batch("a.csv", [make_email(1)])
+    second = repo.create_batch("b.csv", [make_email(2)])
+    third = repo.create_batch("c.csv", [make_email(3)])
+
+    assert [batch.id for batch in repo.list_batches(limit=2)] == [third, second]
+    assert [batch.id for batch in repo.list_batches(limit=2, offset=2)] == [first]
+    assert repo.list_batches(limit=2, offset=4) == []
+
+
+def test_list_emails_limit_and_offset_page_through_id_order(repo):
+    batch_id = repo.create_batch("mail.csv", [make_email(n) for n in range(1, 5)])
+
+    page = repo.list_emails(batch_id, limit=2)
+    next_page = repo.list_emails(batch_id, limit=2, offset=2)
+
+    assert [email.subject for email in page] == ["Subject 1", "Subject 2"]
+    assert [email.subject for email in next_page] == ["Subject 3", "Subject 4"]
+    assert repo.list_emails(batch_id, limit=2, offset=4) == []
+
+
 def test_a_batch_survives_a_new_repository_on_the_same_file(repo):
     batch_id = repo.create_batch("mail.csv", [make_email(1)])
 
@@ -104,6 +156,24 @@ def test_a_batch_survives_a_new_repository_on_the_same_file(repo):
 
     assert reopened.get_batch(batch_id).total == 1
     assert len(reopened.pending_emails(batch_id)) == 1
+
+
+def test_a_database_from_before_display_name_existed_is_migrated_in_place(tmp_path):
+    db_path = tmp_path / "old.db"
+    with sqlite3.connect(db_path) as db:
+        db.execute(
+            "CREATE TABLE batches (id INTEGER PRIMARY KEY AUTOINCREMENT, source_file TEXT NOT NULL, "
+            "total INTEGER NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL, finished_at TEXT)"
+        )
+        db.execute(
+            "INSERT INTO batches (source_file, total, status, created_at) VALUES (?, ?, 'running', ?)",
+            ("old.csv", 1, "2026-01-01T00:00:00+00:00"),
+        )
+        batch_id = db.execute("SELECT id FROM batches").fetchone()[0]
+
+    repo = SQLiteBatchRepository(db_path)
+
+    assert repo.get_batch(batch_id).display_name == "old.csv"
 
 
 def test_the_parent_directory_is_created(tmp_path):

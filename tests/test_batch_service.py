@@ -2,6 +2,7 @@ import json
 import sqlite3
 import threading
 import time
+from datetime import datetime, timezone
 
 import pytest
 from fastapi import HTTPException
@@ -426,6 +427,92 @@ def test_bulk_insert_is_refused_while_a_batch_or_benchmark_is_active(tmp_path, m
     assert [b.id for b in repo.list_batches()] == [1]
 
 
+def test_upload_mailbox_file_stores_it_under_the_mailbox_dir_and_starts_a_batch(tmp_path, mailbox_dir):
+    service, _, _, repo = make_service(tmp_path, mailbox_dir)
+
+    uploaded = service.upload_mailbox_file("mine.csv", csv_text(["hello"]).encode("utf-8"))
+
+    assert uploaded.file.startswith("upload-")
+    assert uploaded.file.endswith(".csv")
+    stored_path = mailbox_dir / uploaded.file
+    assert stored_path.is_file()
+
+    batch = service.start(uploaded.file)
+    assert batch.source_file == uploaded.file
+    assert batch.total == 1
+    assert repo.list_batches()[0].source_file == uploaded.file
+
+
+def test_upload_mailbox_file_records_it_as_pending_until_a_batch_starts(tmp_path, mailbox_dir):
+    service, _, _, _ = make_service(tmp_path, mailbox_dir)
+
+    uploaded = service.upload_mailbox_file("mine.csv", csv_text(["hello"]).encode("utf-8"), "Week 1 inbox")
+
+    pending = service.pending_mailbox_files()
+    assert len(pending) == 1
+    assert pending[0].file == uploaded.file
+    assert pending[0].display_name == "Week 1 inbox"
+
+    service.start(uploaded.file)
+
+    assert service.pending_mailbox_files() == []
+
+
+def test_upload_mailbox_file_falls_back_to_the_stored_name_with_no_display_name(tmp_path, mailbox_dir):
+    service, _, _, _ = make_service(tmp_path, mailbox_dir)
+
+    uploaded = service.upload_mailbox_file("mine.csv", csv_text(["hello"]).encode("utf-8"))
+
+    assert service.pending_mailbox_files()[0].display_name == uploaded.file
+
+
+def test_discard_pending_mailbox_file_removes_its_record(tmp_path, mailbox_dir):
+    service, _, _, _ = make_service(tmp_path, mailbox_dir)
+    uploaded = service.upload_mailbox_file("mine.csv", csv_text(["hello"]).encode("utf-8"))
+
+    service.discard_pending_mailbox_file(uploaded.file)
+
+    assert service.pending_mailbox_files() == []
+
+
+def test_upload_mailbox_file_rejects_an_unsupported_extension(tmp_path, mailbox_dir):
+    service, _, _, _ = make_service(tmp_path, mailbox_dir)
+
+    with pytest.raises(HTTPException) as error:
+        service.upload_mailbox_file("notes.txt", b"not a mailbox file")
+    assert error.value.status_code == 400
+    assert list(mailbox_dir.iterdir()) == [mailbox_dir / "four.csv"]
+
+
+def test_upload_mailbox_file_rejects_an_empty_file(tmp_path, mailbox_dir):
+    service, _, _, _ = make_service(tmp_path, mailbox_dir)
+
+    with pytest.raises(HTTPException) as error:
+        service.upload_mailbox_file("empty.csv", b"")
+    assert error.value.status_code == 400
+
+
+def test_upload_mailbox_file_rejects_a_file_over_the_size_cap(tmp_path, mailbox_dir, monkeypatch):
+    monkeypatch.setattr(batch_module, "MAX_MAILBOX_UPLOAD_BYTES", 10)
+    service, _, _, _ = make_service(tmp_path, mailbox_dir)
+
+    with pytest.raises(HTTPException) as error:
+        service.upload_mailbox_file("big.csv", b"x" * 11)
+    assert error.value.status_code == 400
+    assert list(mailbox_dir.iterdir()) == [mailbox_dir / "four.csv"]
+
+
+def test_two_uploads_of_the_same_original_name_do_not_collide(tmp_path, mailbox_dir):
+    service, _, _, _ = make_service(tmp_path, mailbox_dir)
+
+    first = service.upload_mailbox_file("same.csv", csv_text(["a"]).encode("utf-8"))
+    second = service.upload_mailbox_file("same.csv", csv_text(["b"]).encode("utf-8"))
+
+    assert first.file != second.file
+    assert (mailbox_dir / first.file).is_file()
+    assert (mailbox_dir / second.file).is_file()
+
+
 def test_delete_removes_an_idle_completed_batch(tmp_path, mailbox_dir):
     client = FakeClient(replies=[VALID_REPLY] * 4)
     service, _, _, repo = make_service(tmp_path, mailbox_dir, client)
@@ -492,3 +579,182 @@ def test_a_concurrent_resume_cannot_claim_a_batch_delete_is_removing(tmp_path, m
     assert isinstance(resume_outcome, HTTPException) and resume_outcome.status_code == 404
     assert repo.list_batches() == []
     assert state.active_batch_id is None
+
+
+def test_stop_pauses_after_the_current_email_and_the_batch_stays_resumable(tmp_path, mailbox_dir, monkeypatch):
+    client = FakeClient(replies=[VALID_REPLY, VALID_REPLY, VALID_REPLY, VALID_REPLY])
+    service, _, state, repo = make_service(tmp_path, mailbox_dir, client)
+    batch = service.start("four.csv")
+    original_save = repo.save_result
+
+    def stop_after_first(email_id, response):
+        original_save(email_id, response)
+        state.stop_batch_id = batch.id
+
+    monkeypatch.setattr(repo, "save_result", stop_after_first)
+
+    service.run(batch.id)
+
+    stopped = service.get(batch.id)
+    assert (stopped.status, stopped.active, stopped.processed) == ("running", False, 1)
+    assert state.active_batch_id is None
+    assert state.stop_batch_id is None
+
+    monkeypatch.setattr(repo, "save_result", original_save)
+    resumed = service.resume(batch.id)
+    assert resumed.active is True
+    service.run(batch.id)
+    done = service.get(batch.id)
+    assert (done.status, done.processed) == ("completed", 4)
+
+
+def test_stop_is_refused_for_a_batch_that_is_not_the_active_one(tmp_path, mailbox_dir):
+    service, _, state, _ = make_service(tmp_path, mailbox_dir)
+    batch = service.start("four.csv")
+    state.active_batch_id = None
+
+    with pytest.raises(HTTPException) as error:
+        service.stop(batch.id)
+    assert error.value.status_code == 400
+
+    with pytest.raises(HTTPException) as error:
+        service.stop(999)
+    assert error.value.status_code == 404
+
+
+def test_run_logs_a_start_line_a_per_email_line_and_a_completion_line(tmp_path, mailbox_dir, caplog):
+    service, _, _, _ = make_service(tmp_path, mailbox_dir, FakeClient(replies=[VALID_REPLY] * 4))
+    batch = service.start("four.csv")
+
+    with caplog.at_level("INFO", logger="app.services.batch"):
+        service.run(batch.id)
+
+    messages = [record.message for record in caplog.records]
+    assert any("starting" in message for message in messages)
+    assert sum("-> ok" in message for message in messages) == 4
+    assert any("completed" in message for message in messages)
+
+
+def test_run_only_triages_emails_inside_the_given_received_range(tmp_path, mailbox_dir):
+    rows_text = (
+        "sender,subject,body,received_at\n"
+        "a@example.com,One,First,2026-01-01T00:00:00+00:00\n"
+        "b@example.com,Two,Second,2026-02-01T00:00:00+00:00\n"
+        "c@example.com,Three,Third,2026-03-01T00:00:00+00:00\n"
+    )
+    (mailbox_dir / "ranged.csv").write_text(rows_text, encoding="utf-8")
+    client = FakeClient(replies=[VALID_REPLY])
+    service, _, state, repo = make_service(tmp_path, mailbox_dir, client)
+    batch = service.start("ranged.csv")
+
+    service.run(
+        batch.id,
+        received_after=datetime(2026, 1, 15, tzinfo=timezone.utc),
+        received_before=datetime(2026, 2, 15, tzinfo=timezone.utc),
+    )
+
+    status = service.get(batch.id)
+    assert status.processed == 1
+    # Two emails fell outside the range and were never triaged, so the batch is not done yet.
+    assert status.status == "running"
+    assert status.active is False
+    assert state.active_batch_id is None
+    emails = repo.list_emails(batch.id)
+    triaged = [email for email in emails if email.triage is not None]
+    assert len(triaged) == 1
+    assert triaged[0].subject == "Two"
+
+
+def test_a_range_that_covers_every_email_still_completes_the_batch(tmp_path, mailbox_dir):
+    client = FakeClient(replies=[VALID_REPLY] * 4)
+    service, _, _, _ = make_service(tmp_path, mailbox_dir, client)
+    batch = service.start("four.csv")
+
+    service.run(batch.id, received_after=None, received_before=None)
+
+    assert service.get(batch.id).status == "completed"
+
+
+def test_a_batch_left_running_by_a_narrow_range_can_be_resumed_to_finish_the_rest(tmp_path, mailbox_dir):
+    rows_text = (
+        "sender,subject,body,received_at\n"
+        "a@example.com,One,First,2026-01-01T00:00:00+00:00\n"
+        "b@example.com,Two,Second,2026-02-01T00:00:00+00:00\n"
+        "c@example.com,Three,Third,2026-03-01T00:00:00+00:00\n"
+    )
+    (mailbox_dir / "ranged.csv").write_text(rows_text, encoding="utf-8")
+    service, _, _, repo = make_service(tmp_path, mailbox_dir, FakeClient(replies=[VALID_REPLY]))
+    batch = service.start("ranged.csv")
+    service.run(
+        batch.id,
+        received_after=datetime(2026, 1, 15, tzinfo=timezone.utc),
+        received_before=datetime(2026, 2, 15, tzinfo=timezone.utc),
+    )
+    assert service.get(batch.id).status == "running"
+
+    resumed_client = FakeClient(replies=[VALID_REPLY, VALID_REPLY])
+    resumed_service, _, _, _ = make_service(tmp_path, mailbox_dir, resumed_client)
+    resumed_service.resume(batch.id)
+    resumed_service.run(batch.id)
+
+    done = resumed_service.get(batch.id)
+    assert done.status == "completed"
+    assert done.processed == 3
+    triaged_subjects = {email.subject for email in repo.list_emails(batch.id) if email.triage is not None}
+    assert triaged_subjects == {"One", "Two", "Three"}
+
+
+def test_pending_preview_returns_timestamps_of_only_the_still_pending_emails(tmp_path, mailbox_dir):
+    rows_text = (
+        "sender,subject,body,received_at\n"
+        "a@example.com,One,First,2026-01-01T00:00:00+00:00\n"
+        "b@example.com,Two,Second,2026-02-01T00:00:00+00:00\n"
+        "c@example.com,Three,Third,2026-03-01T00:00:00+00:00\n"
+    )
+    (mailbox_dir / "ranged.csv").write_text(rows_text, encoding="utf-8")
+    service, _, _, _ = make_service(tmp_path, mailbox_dir, FakeClient(replies=[VALID_REPLY]))
+    batch = service.start("ranged.csv")
+    service.run(
+        batch.id,
+        received_after=datetime(2026, 1, 15, tzinfo=timezone.utc),
+        received_before=datetime(2026, 2, 15, tzinfo=timezone.utc),
+    )
+
+    preview = service.pending_preview(batch.id)
+
+    assert preview.received_at == [
+        datetime(2026, 1, 1, tzinfo=timezone.utc),
+        datetime(2026, 3, 1, tzinfo=timezone.utc),
+    ]
+
+
+def test_pending_preview_rejects_an_unknown_batch(tmp_path, mailbox_dir):
+    service, _, _, _ = make_service(tmp_path, mailbox_dir)
+
+    with pytest.raises(HTTPException) as error:
+        service.pending_preview(999)
+
+    assert error.value.status_code == 404
+
+
+def test_preview_mailbox_file_returns_timestamps_without_creating_a_batch(tmp_path, mailbox_dir):
+    service, _, _, repo = make_service(tmp_path, mailbox_dir)
+
+    preview = service.preview_mailbox_file("four.csv")
+
+    assert len(preview.received_at) == 4
+    assert all(value is not None for value in preview.received_at)
+    assert repo.list_batches() == []
+
+
+def test_preview_mailbox_file_rejects_an_unknown_or_unsupported_file(tmp_path, mailbox_dir):
+    service, _, _, _ = make_service(tmp_path, mailbox_dir)
+
+    with pytest.raises(HTTPException) as error:
+        service.preview_mailbox_file("missing.csv")
+    assert error.value.status_code == 400
+
+    (mailbox_dir / "notes.txt").write_text("not a mailbox file", encoding="utf-8")
+    with pytest.raises(HTTPException) as error:
+        service.preview_mailbox_file("notes.txt")
+    assert error.value.status_code == 400

@@ -11,6 +11,8 @@ class AppState:
         self.active_temperature: float = 0.7
         self.benchmark_running: bool = False
         self.active_batch_id: int | None = None
+        # Set to a batch id to ask its running loop to pause after the current email.
+        self.stop_batch_id: int | None = None
         # Held while a batch start or resume checks and claims the worker slot.
         self.batch_lock = threading.Lock()
         # The single in-flight Gmail OAuth attempt, if any; a new connect overwrites it,

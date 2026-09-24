@@ -109,14 +109,59 @@ class StoredEmail(LoadedEmail):
 
 
 class BatchRequest(BaseModel):
-    """Names a file inside the server's mailbox folder; never a path."""
+    """Names a file inside the server's mailbox folder; never a path. The optional range narrows
+    which stored emails get triaged, not which ones are stored."""
     file: NonBlankText
+    received_after: datetime | None = None
+    received_before: datetime | None = None
+
+    @field_validator("received_after", "received_before")
+    @classmethod
+    def _to_utc(cls, value: datetime | None) -> datetime | None:
+        if value is None:
+            return None
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
+
+
+class ResumeBatchRequest(BaseModel):
+    """Optional range narrowing a resume to a subset of the batch's still-pending emails."""
+    received_after: datetime | None = None
+    received_before: datetime | None = None
+
+    @field_validator("received_after", "received_before")
+    @classmethod
+    def _to_utc(cls, value: datetime | None) -> datetime | None:
+        if value is None:
+            return None
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
+
+
+class MailboxFileUpload(BaseModel):
+    """The stored name of a mailbox file just uploaded; pass it straight to BatchRequest.file."""
+    file: str
+
+
+class PendingMailboxFile(BaseModel):
+    """An uploaded mailbox file with no batch started from it yet."""
+    file: str
+    display_name: str
+    created_at: datetime
+
+
+class MailboxFilePreview(BaseModel):
+    """Read-only preview of a mailbox file's email timestamps; no batch is created."""
+    received_at: list[datetime | None]
 
 
 class BatchStatus(BaseModel):
     """`processed` is the number of stored results; `active` means a worker in this process is on it."""
     id: int
     source_file: str
+    display_name: str
     status: Literal["running", "completed"]
     active: bool = False
     total: int

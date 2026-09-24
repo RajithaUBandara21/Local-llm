@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { formatReceivedAtFull } from "@/lib/format";
 import type { ReviewableEmail } from "@/lib/types";
 import { PriorityBadge } from "./PriorityBadge";
 import { ActionBar } from "./ActionBar";
@@ -29,6 +30,7 @@ export function EmailDetail({ email }: Readonly<{ email: ReviewableEmail }>) {
         <div>
           <p className="detail-subject">{email.subject}</p>
           <p className="detail-sender">{email.sender}</p>
+          <p className="detail-received-at">{formatReceivedAtFull(email.received_at)}</p>
         </div>
         <div className="detail-meta">
           <PriorityBadge priority={result.priority} />

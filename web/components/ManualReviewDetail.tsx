@@ -1,3 +1,4 @@
+import { formatReceivedAtFull } from "@/lib/format";
 import type { ReviewableEmail } from "@/lib/types";
 
 export function ManualReviewDetail({
@@ -13,6 +14,7 @@ export function ManualReviewDetail({
         <div>
           <p className="detail-subject">{email.subject}</p>
           <p className="detail-sender">{email.sender}</p>
+          <p className="detail-received-at">{formatReceivedAtFull(email.received_at)}</p>
         </div>
         <span className={`status-pill ${triage.status}`}>
           {failed ? "failed" : "needs review"}

@@ -1,16 +1,29 @@
 "use client";
 
 import { CATEGORIES, PRIORITIES } from "@/lib/constants";
-import { useReviewQueue } from "@/lib/review-queue-context";
+import { useReviewQueue, type SortOption } from "@/lib/review-queue-context";
 
 function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
+const DEFAULT_FILTERS = {
+  priority: "all",
+  category: "all",
+  search: "",
+} as const;
+
+const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: "priority", label: "Priority" },
+  { value: "newest", label: "Newest first" },
+  { value: "oldest", label: "Oldest first" },
+];
+
 export function FilterBar() {
-  const { view, filters, setFilters } = useReviewQueue();
-  const disabled = view !== "queue";
-  const isCleared = filters.priority === "all" && filters.category === "all";
+  const { view, filters, setFilters, sortBy, setSortBy } = useReviewQueue();
+  const isQueue = view === "queue";
+  const isCleared =
+    filters.priority === "all" && filters.category === "all" && !filters.search;
 
   return (
     <div className="control-group">
@@ -22,7 +35,7 @@ export function FilterBar() {
         className="filter-select"
         title="Filter the queue by priority level"
         aria-label="Filter by priority"
-        disabled={disabled}
+        disabled={!isQueue}
         value={filters.priority}
         onChange={(event) =>
           setFilters({
@@ -43,7 +56,7 @@ export function FilterBar() {
         className="filter-select"
         title="Filter the queue by category"
         aria-label="Filter by category"
-        disabled={disabled}
+        disabled={!isQueue}
         value={filters.category}
         onChange={(event) =>
           setFilters({
@@ -62,12 +75,41 @@ export function FilterBar() {
       <button
         type="button"
         className="filter-clear"
-        title="Reset both filters back to all priorities and categories"
-        disabled={disabled || isCleared}
-        onClick={() => setFilters({ priority: "all", category: "all" })}
+        title="Reset every filter back to its default"
+        disabled={isCleared}
+        onClick={() => setFilters({ ...DEFAULT_FILTERS })}
       >
         Clear
       </button>
+
+      <label className="filter-label" htmlFor="sortBySelect">
+        Sort by
+      </label>
+      <select
+        id="sortBySelect"
+        className="filter-select"
+        title="Sort emails within each priority level by date and time"
+        aria-label="Sort by"
+        value={sortBy}
+        onChange={(event) => setSortBy(event.target.value as SortOption)}
+      >
+        {SORT_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+
+      <input
+        id="senderSearchInput"
+        type="search"
+        className="filter-select filter-search"
+        placeholder="Search by email address"
+        title="Find emails by sender address"
+        aria-label="Search by sender email address"
+        value={filters.search}
+        onChange={(event) => setFilters({ ...filters, search: event.target.value })}
+      />
     </div>
   );
 }

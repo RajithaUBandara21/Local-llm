@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 
 from app.schemas import (
-    BatchStatus, GmailConnection, LoadedEmail, ReviewableEmail, ReviewAction, ReviewActionType, StoredEmail,
-    TriageResponse,
+    BatchStatus, GmailConnection, LoadedEmail, PendingMailboxFile, ReviewableEmail, ReviewAction,
+    ReviewActionType, StoredEmail, TriageResponse,
 )
 
 
@@ -21,11 +21,24 @@ class IBatchRepository(ABC):
         """Store a running batch with its emails and return the batch id."""
 
     @abstractmethod
+    def save_pending_mailbox_file(self, file: str, display_name: str) -> None:
+        """Record an uploaded mailbox file with no batch started from it yet."""
+
+    @abstractmethod
+    def list_pending_mailbox_files(self) -> list[PendingMailboxFile]:
+        """Every uploaded mailbox file with no batch started from it yet, newest first."""
+
+    @abstractmethod
+    def delete_pending_mailbox_file(self, file: str) -> None:
+        """Remove a pending mailbox file's record; a no-op when it has none. Called once a batch
+        starts from it, so it stops appearing as pending."""
+
+    @abstractmethod
     def get_batch(self, batch_id: int) -> BatchStatus | None: pass
 
     @abstractmethod
-    def list_batches(self) -> list[BatchStatus]:
-        """Newest batch first."""
+    def list_batches(self, limit: int | None = None, offset: int = 0) -> list[BatchStatus]:
+        """Newest batch first. An unset limit returns every batch, as before pagination existed."""
 
     @abstractmethod
     def pending_emails(self, batch_id: int) -> list[StoredEmail]:
@@ -39,8 +52,11 @@ class IBatchRepository(ABC):
     def mark_completed(self, batch_id: int) -> None: pass
 
     @abstractmethod
-    def list_emails(self, batch_id: int | None = None) -> list[ReviewableEmail]:
-        """Every stored email in id order, each with its stored result or none."""
+    def list_emails(
+        self, batch_id: int | None = None, limit: int | None = None, offset: int = 0
+    ) -> list[ReviewableEmail]:
+        """Every stored email in id order, each with its stored result or none. An unset limit
+        returns every matching email, as before pagination existed."""
 
     @abstractmethod
     def get_email(self, email_id: int) -> ReviewableEmail | None:
