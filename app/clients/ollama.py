@@ -6,9 +6,10 @@ from app.clients.base import ILLMClient, LLMTimeoutError
 class OllamaClient(ILLMClient):
     """Handles direct HTTP communication with the Ollama API."""
 
-    def __init__(self, base_url: str, ps_url: str):
+    def __init__(self, base_url: str, ps_url: str, tags_url: str):
         self.base_url = base_url
         self.ps_url = ps_url
+        self.tags_url = tags_url
 
     def generate(
         self, model: str, prompt: str, temperature: float,
@@ -35,5 +36,10 @@ class OllamaClient(ILLMClient):
 
     def list_loaded_models(self) -> list[str]:
         response = requests.get(self.ps_url)
+        response.raise_for_status()
+        return [entry["name"] for entry in response.json()["models"]]
+
+    def list_available_models(self) -> list[str]:
+        response = requests.get(self.tags_url)
         response.raise_for_status()
         return [entry["name"] for entry in response.json()["models"]]

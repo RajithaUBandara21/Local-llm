@@ -69,9 +69,34 @@ def test_unknown_model_is_rejected_without_touching_the_client():
         service.switch_active_model("not-installed")
 
     assert error.value.status_code == 400
-    assert error.value.detail == "Model not-installed not configured."
-    assert client.calls == []
+    assert error.value.detail == "Model not-installed is not installed in Ollama."
+    assert client.calls == [("list_available_models",)]
     assert state.active_model == before
+
+
+def test_active_settings_reflects_state():
+    service, _, state = make_service()
+    state.active_model = MODELS[1]
+    state.active_temperature = 0.4
+
+    assert service.active_settings() == (MODELS[1], 0.4)
+
+
+def test_list_available_models_returns_what_ollama_has_installed():
+    service, client, _ = make_service(FakeClient(available=["llama3.2", "phi-4-Q4"]))
+
+    assert service.list_available_models() == ["llama3.2", "phi-4-Q4"]
+    assert client.calls == [("list_available_models",)]
+
+
+def test_list_available_models_failure_is_wrapped_in_500():
+    service, _, _ = make_service(FakeClient(fail_on="list_available_models"))
+
+    with pytest.raises(HTTPException) as error:
+        service.list_available_models()
+
+    assert error.value.status_code == 500
+    assert error.value.detail == "Failed to list installed models: list_available_models failed"
 
 
 def test_switch_unloads_every_other_loaded_model_then_loads_the_new_one():
@@ -81,6 +106,7 @@ def test_switch_unloads_every_other_loaded_model_then_loads_the_new_one():
     assert service.switch_active_model(MODELS[1]) == MODELS[1]
 
     assert client.calls == [
+        ("list_available_models",),
         ("list_loaded_models",),
         ("unload_model", f"{MODELS[0]}:latest"),
         ("unload_model", "not-configured:latest"),
@@ -99,6 +125,18 @@ def test_switch_failure_gives_500_and_keeps_the_active_model(failing_call):
 
     assert error.value.status_code == 500
     assert error.value.detail == f"Failed to switch models: {failing_call} failed"
+    assert state.active_model == before
+
+
+def test_switch_to_a_model_when_listing_available_models_fails_gives_500():
+    service, _, state = make_service(FakeClient(fail_on="list_available_models"))
+    before = state.active_model
+
+    with pytest.raises(HTTPException) as error:
+        service.switch_active_model(MODELS[1])
+
+    assert error.value.status_code == 500
+    assert error.value.detail == "Failed to list installed models: list_available_models failed"
     assert state.active_model == before
 
 

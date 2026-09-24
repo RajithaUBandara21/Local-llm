@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { GmailPanel } from "@/components/GmailPanel";
+import { ModelSettingsPanel } from "@/components/ModelSettingsPanel";
 
 export default function AdminPage() {
   return (
@@ -25,12 +26,13 @@ export default function AdminPage() {
         <div className="page-header">
           <div>
             <h1 className="page-title">Admin</h1>
-            <p className="page-subtitle">Manage the Gmail connection.</p>
+            <p className="page-subtitle">Manage the Gmail connection and processing model.</p>
           </div>
         </div>
 
         <div className="admin-layout">
           <GmailPanel />
+          <ModelSettingsPanel />
         </div>
       </div>
     </>

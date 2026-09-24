@@ -4,7 +4,7 @@ from fastapi import Depends
 
 from app.clients.base import ILLMClient
 from app.clients.ollama import OllamaClient
-from app.config import DATABASE_PATH, MAILBOX_DIR, OLLAMA_GENERATE_URL, OLLAMA_PS_URL, RESULTS_DIR
+from app.config import DATABASE_PATH, MAILBOX_DIR, OLLAMA_GENERATE_URL, OLLAMA_PS_URL, OLLAMA_TAGS_URL, RESULTS_DIR
 from app.repositories.base import IBatchRepository, IGmailRepository, IMetricsRepository
 from app.repositories.csv_metrics import CSVMetricsRepository
 from app.repositories.sqlite_batches import SQLiteBatchRepository
@@ -18,7 +18,7 @@ from app.state import AppState, get_app_state
 
 
 def get_llm_client() -> ILLMClient:
-    return OllamaClient(OLLAMA_GENERATE_URL, OLLAMA_PS_URL)
+    return OllamaClient(OLLAMA_GENERATE_URL, OLLAMA_PS_URL, OLLAMA_TAGS_URL)
 
 
 def get_metrics_repository() -> IMetricsRepository:

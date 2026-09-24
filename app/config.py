@@ -38,6 +38,7 @@ OLLAMA_URL = load_setting("OLLAMA_URL", "http://localhost:11434").rstrip("/")
 DATABASE_PATH = load_setting("DATABASE_PATH", "triage.db")
 OLLAMA_GENERATE_URL = f"{OLLAMA_URL}/api/generate"
 OLLAMA_PS_URL = f"{OLLAMA_URL}/api/ps"
+OLLAMA_TAGS_URL = f"{OLLAMA_URL}/api/tags"
 
 # Gmail OAuth (feature 26b). Empty client id/secret/key means Gmail is not configured;
 # routes that need them return 503 instead of failing at import time.

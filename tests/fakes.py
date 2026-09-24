@@ -1,4 +1,5 @@
 from app.clients.base import ILLMClient
+from app.config import MODELS
 
 
 class FakeClient(ILLMClient):
@@ -8,10 +9,11 @@ class FakeClient(ILLMClient):
     exception is raised. Once used up (or when empty), `reply` is returned.
     """
 
-    def __init__(self, reply=None, fail_on=None, loaded=None, replies=None):
+    def __init__(self, reply=None, fail_on=None, loaded=None, replies=None, available=None):
         self.reply = reply or {"response": "hello"}
         self.fail_on = fail_on
         self.loaded = loaded or []
+        self.available = MODELS if available is None else available
         self.replies = list(replies or [])
         self.calls = []
         self.generate_options = []
@@ -40,3 +42,7 @@ class FakeClient(ILLMClient):
     def list_loaded_models(self):
         self._record("list_loaded_models")
         return list(self.loaded)
+
+    def list_available_models(self):
+        self._record("list_available_models")
+        return list(self.available)

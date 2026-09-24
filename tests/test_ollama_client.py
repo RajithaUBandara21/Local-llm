@@ -6,6 +6,8 @@ from app.clients.base import LLMTimeoutError
 from app.clients.ollama import OllamaClient
 
 GENERATE_URL = "http://ollama.test/api/generate"
+PS_URL = "http://ollama.test/api/ps"
+TAGS_URL = "http://ollama.test/api/tags"
 SCHEMA = {"type": "object", "properties": {"category": {"type": "string"}}}
 
 
@@ -34,7 +36,7 @@ def posts(monkeypatch):
 
 
 def make_client():
-    return OllamaClient(GENERATE_URL, "http://ollama.test/api/ps")
+    return OllamaClient(GENERATE_URL, PS_URL, TAGS_URL)
 
 
 def test_generate_without_a_schema_sends_no_format_and_no_timeout(posts):
@@ -76,3 +78,18 @@ def test_other_request_errors_are_not_reported_as_timeouts(monkeypatch):
 
     with pytest.raises(requests.ConnectionError):
         make_client().generate("llama3.2", "hello", 0.0, timeout=30)
+
+
+def test_list_available_models_reads_the_tags_endpoint(monkeypatch):
+    calls = []
+
+    def fake_get(url, **kwargs):
+        calls.append(url)
+        return StubResponse({"models": [{"name": "llama3.2"}, {"name": "phi-4-Q4"}]})
+
+    monkeypatch.setattr(ollama.requests, "get", fake_get)
+
+    names = make_client().list_available_models()
+
+    assert names == ["llama3.2", "phi-4-Q4"]
+    assert calls == [TAGS_URL]

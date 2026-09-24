@@ -23,3 +23,7 @@ class ILLMClient(ABC):
 
     @abstractmethod
     def list_loaded_models(self) -> list[str]: pass
+
+    @abstractmethod
+    def list_available_models(self) -> list[str]:
+        """Every model Ollama has installed locally, regardless of load state."""

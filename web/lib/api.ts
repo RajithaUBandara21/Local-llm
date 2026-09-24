@@ -1,4 +1,6 @@
 import type {
+  ActiveModelSettings,
+  AvailableModelsResponse,
   BatchStatus,
   BenchmarkConfig,
   BenchmarkMetrics,
@@ -168,6 +170,32 @@ export function previewPendingEmails(
   return apiFetch<{ received_at: (string | null)[] }>(
     `/api/batches/${batchId}/pending-preview`
   );
+}
+
+export function getInstalledModels(): Promise<AvailableModelsResponse> {
+  return apiFetch<AvailableModelsResponse>("/api/models");
+}
+
+export function getActiveModelSettings(): Promise<ActiveModelSettings> {
+  return apiFetch<ActiveModelSettings>("/api/model/active");
+}
+
+export function changeActiveModel(modelName: string): Promise<{ status: string; message: string }> {
+  return apiFetch<{ status: string; message: string }>("/api/model/change", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model_name: modelName }),
+  });
+}
+
+export function setActiveTemperature(
+  temperature: number
+): Promise<{ status: string; active_temperature: number }> {
+  return apiFetch<{ status: string; active_temperature: number }>("/api/settings/temperature", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ temperature }),
+  });
 }
 
 export function getBenchmarkConfig(): Promise<BenchmarkConfig> {

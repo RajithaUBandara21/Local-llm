@@ -1,7 +1,6 @@
 from fastapi import HTTPException
 
 from app.clients.base import ILLMClient
-from app.config import MODELS
 from app.services.model_loading import unload_others
 from app.state import AppState
 
@@ -20,9 +19,18 @@ class AssistantService:
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"LLM Generation failed: {str(e)}")
 
+    def list_available_models(self) -> list[str]:
+        try:
+            return self.client.list_available_models()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to list installed models: {str(e)}")
+
+    def active_settings(self) -> tuple[str, float]:
+        return self.state.active_model, self.state.active_temperature
+
     def switch_active_model(self, new_model: str) -> str:
-        if new_model not in MODELS:
-            raise HTTPException(status_code=400, detail=f"Model {new_model} not configured.")
+        if new_model not in self.list_available_models():
+            raise HTTPException(status_code=400, detail=f"Model {new_model} is not installed in Ollama.")
         try:
             unload_others(self.client, new_model)
             self.client.load_model(new_model)

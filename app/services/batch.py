@@ -58,11 +58,22 @@ class BatchService:
         return self.get(batch_id)
 
     def delete(self, batch_id: int) -> None:
-        self.get(batch_id)  # raises 404 when the batch does not exist
+        batch = self.get(batch_id)  # raises 404 when the batch does not exist
         with self.state.batch_lock:
             if self.state.active_batch_id == batch_id:
                 raise HTTPException(status_code=400, detail=f"Batch {batch_id} is currently running.")
             self.repository.delete_batch(batch_id)
+        self._delete_mailbox_file(batch.source_file)
+
+    def _delete_mailbox_file(self, source_file: str) -> None:
+        # bulk_insert() batches use a synthetic "test:<timestamp>" source with no file on disk.
+        if source_file.startswith("test:"):
+            return
+        path = self.mailbox_dir / source_file
+        try:
+            path.unlink(missing_ok=True)
+        except OSError:
+            logger.warning("Could not delete mailbox file %s for a deleted batch.", source_file)
 
     def resume(self, batch_id: int) -> BatchStatus:
         with self.state.batch_lock:

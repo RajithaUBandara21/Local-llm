@@ -524,6 +524,28 @@ def test_delete_removes_an_idle_completed_batch(tmp_path, mailbox_dir):
     assert repo.list_batches() == []
 
 
+def test_delete_also_removes_the_uploaded_mailbox_file(tmp_path, mailbox_dir):
+    client = FakeClient(replies=[VALID_REPLY])
+    service, _, _, _ = make_service(tmp_path, mailbox_dir, client)
+    upload = service.upload_mailbox_file("one.csv", csv_text(["one"]).encode("utf-8"))
+    batch = service.start(upload.file)
+    service.run(batch.id)
+
+    service.delete(batch.id)
+
+    assert not (mailbox_dir / upload.file).exists()
+
+
+def test_delete_of_a_bulk_insert_batch_has_no_file_to_remove(tmp_path, mailbox_dir):
+    service, _, _, repo = make_service(tmp_path, mailbox_dir)
+    batch = service.bulk_insert()
+    service.run(batch.id)
+
+    service.delete(batch.id)  # must not raise despite no file on disk for "test:..." sources
+
+    assert repo.list_batches() == []
+
+
 def test_delete_refuses_the_currently_active_batch(tmp_path, mailbox_dir):
     service, _, state, repo = make_service(tmp_path, mailbox_dir)
     batch = service.start("four.csv")

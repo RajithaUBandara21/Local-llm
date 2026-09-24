@@ -92,6 +92,18 @@ export interface GmailConnection {
   connectedAt: string | null;
 }
 
+// Admin model settings panel. Mirrors GET /api/models (AvailableModelsResponse)
+// and the AppState.active_model / active_temperature fields that /api/model/change
+// and /api/settings/temperature mutate.
+export interface AvailableModelsResponse {
+  models: string[];
+}
+
+export interface ActiveModelSettings {
+  active_model: string;
+  active_temperature: number;
+}
+
 // Benchmark testing screen (feature 24). Mirrors GET /api/benchmark/config.
 export interface BenchmarkConfig {
   models: string[];

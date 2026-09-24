@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
 from app.dependencies import get_assistant_service
-from app.schemas import ChatRequest, ModelChangeRequest, TemperatureRequest
+from app.schemas import ActiveModelSettings, AvailableModelsResponse, ChatRequest, ModelChangeRequest, TemperatureRequest
 from app.services.assistant import AssistantService
 
 router = APIRouter()
@@ -13,6 +13,17 @@ def chat_endpoint(
     service: AssistantService = Depends(get_assistant_service)
 ):
     return service.process_chat(request.prompt)
+
+
+@router.get("/api/models", response_model=AvailableModelsResponse)
+def list_available_models_endpoint(service: AssistantService = Depends(get_assistant_service)):
+    return AvailableModelsResponse(models=service.list_available_models())
+
+
+@router.get("/api/model/active", response_model=ActiveModelSettings)
+def get_active_model_settings_endpoint(service: AssistantService = Depends(get_assistant_service)):
+    model, temperature = service.active_settings()
+    return ActiveModelSettings(active_model=model, active_temperature=temperature)
 
 
 @router.post("/api/model/change")

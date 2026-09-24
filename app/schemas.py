@@ -25,6 +25,15 @@ class TemperatureRequest(BaseModel):
     temperature: float
 
 
+class AvailableModelsResponse(BaseModel):
+    models: list[str]
+
+
+class ActiveModelSettings(BaseModel):
+    active_model: str
+    active_temperature: float
+
+
 class BenchmarkSetting(BaseModel):
     model: str
     temperature: float
