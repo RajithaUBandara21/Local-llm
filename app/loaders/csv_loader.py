@@ -49,5 +49,4 @@ class CsvEmailLoader(IEmailLoader):
             subject=cell["subject"],
             body_clean=clean_body(body, is_html=looks_like_html(body)),
             received_at=received_at,
-            mailbox=cell.get("mailbox") or None,
         )

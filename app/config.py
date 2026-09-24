@@ -67,5 +67,3 @@ TRIAGE_MAX_BODY_CHARS = 6000
 
 # Batches load mailbox files from here; the API accepts only a bare file name inside it.
 MAILBOX_DIR = "data"
-# The agents, mailboxes, and assignments the server loads at start-up (MVP; an admin screen replaces it later).
-SEED_FILE = "data/agents.json"

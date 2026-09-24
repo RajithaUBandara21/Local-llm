@@ -1,4 +1,4 @@
-import type { MailboxEmail } from "@/lib/types";
+import type { ReviewableEmail } from "@/lib/types";
 import { PriorityBadge } from "./PriorityBadge";
 
 export function QueueRow({
@@ -6,7 +6,7 @@ export function QueueRow({
   selected,
   onSelect,
 }: Readonly<{
-  email: MailboxEmail;
+  email: ReviewableEmail;
   selected: boolean;
   onSelect: () => void;
 }>) {

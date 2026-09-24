@@ -1,8 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { AgentPicker } from "@/components/AgentPicker";
-import { MailboxPicker } from "@/components/MailboxPicker";
 import { QueueModeToggle } from "@/components/QueueModeToggle";
 import { ViewToggle } from "@/components/ViewToggle";
 import { FilterBar } from "@/components/FilterBar";
@@ -35,8 +33,6 @@ export default function ReviewPage() {
           </Link>
         </nav>
         <div className="controls">
-          <AgentPicker />
-          <MailboxPicker />
           <QueueModeToggle />
           {isLive && <ViewToggle />}
           {isLive && <FilterBar />}

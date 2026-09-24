@@ -28,9 +28,9 @@ by a person yet.
 
 ## Loading
 
-`CsvEmailLoader` reads the file and ignores `id`, `category`, and `priority`. It
-returns one email per row in row order, so the Nth loaded email has the labels on
-row N.
+`CsvEmailLoader` reads the file and ignores `id`, `mailbox`, `category`, and
+`priority`. It returns one email per row in row order, so the Nth loaded email
+has the labels on row N.
 
 ```python
 from pathlib import Path

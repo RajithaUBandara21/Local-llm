@@ -11,7 +11,7 @@ from google_auth_oauthlib.flow import Flow
 from app.config import (
     GMAIL_TOKEN_ENCRYPTION_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_OAUTH_REDIRECT_URI,
 )
-from app.repositories.base import IAccessRepository
+from app.repositories.base import IGmailRepository
 from app.schemas import GmailConnection
 from app.state import AppState
 
@@ -42,22 +42,18 @@ def _build_flow() -> Flow:
 class GmailOAuthService:
     """Runs the Gmail OAuth connect/status/disconnect flow; never touches the Gmail API itself."""
 
-    def __init__(self, access: IAccessRepository, state: AppState):
-        self.access = access
+    def __init__(self, gmail: IGmailRepository, state: AppState):
+        self.gmail = gmail
         self.state = state
 
-    def build_authorization_url(self, mailbox: str) -> str:
+    def build_authorization_url(self) -> str:
         _require_configured()
-        if mailbox not in self.access.list_mailboxes():
-            raise HTTPException(status_code=404, detail=f"Mailbox '{mailbox}' does not exist.")
-
         state_token = secrets.token_urlsafe(32)
         flow = _build_flow()
         authorization_url, _ = flow.authorization_url(
             access_type="offline", prompt="consent", state=state_token
         )
         self.state.pending_gmail_oauth_state = state_token
-        self.state.pending_gmail_oauth_mailbox = mailbox
         return authorization_url
 
     def complete_authorization(self, code: str, state: str) -> None:
@@ -65,8 +61,6 @@ class GmailOAuthService:
             raise HTTPException(
                 status_code=400, detail="Gmail connection attempt expired or is invalid; try connecting again."
             )
-        mailbox = self.state.pending_gmail_oauth_mailbox
-
         try:
             flow = _build_flow()
             flow.fetch_token(code=code)
@@ -76,20 +70,19 @@ class GmailOAuthService:
             encrypted_refresh_token = Fernet(GMAIL_TOKEN_ENCRYPTION_KEY.encode()).encrypt(
                 credentials.refresh_token.encode()
             )
-            self.access.save_gmail_connection(mailbox, email, encrypted_refresh_token)
+            self.gmail.save_gmail_connection(email, encrypted_refresh_token)
         finally:
             self.state.pending_gmail_oauth_state = None
-            self.state.pending_gmail_oauth_mailbox = None
 
     def status(self) -> GmailConnection | None:
-        return self.access.get_gmail_connection()
+        return self.gmail.get_gmail_connection()
 
     def disconnect(self) -> None:
         self._revoke_best_effort()
-        self.access.delete_gmail_connection()
+        self.gmail.delete_gmail_connection()
 
     def _revoke_best_effort(self) -> None:
-        encrypted_refresh_token = self.access.get_gmail_refresh_token()
+        encrypted_refresh_token = self.gmail.get_gmail_refresh_token()
         if encrypted_refresh_token is None:
             return
         try:

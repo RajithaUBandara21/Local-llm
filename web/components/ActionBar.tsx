@@ -1,14 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useAgent } from "@/lib/agent-context";
-import { useMailbox } from "@/lib/mailbox-context";
 import { useReviewQueue } from "@/lib/review-queue-context";
 import { ApiError, submitReview } from "@/lib/api";
-import type { MailboxEmail, ReviewActionType } from "@/lib/types";
+import type { ReviewableEmail, ReviewActionType } from "@/lib/types";
 
 interface ActionBarProps {
-  email: MailboxEmail;
+  email: ReviewableEmail;
   hasReply: boolean;
   editing: boolean;
   draft: string;
@@ -24,24 +22,15 @@ export function ActionBar({
   onStartEdit,
   onCancelEdit,
 }: Readonly<ActionBarProps>) {
-  const { currentAgentId } = useAgent();
-  const { currentMailbox } = useMailbox();
   const { applyReview } = useReviewQueue();
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   async function act(action: ReviewActionType, editedReply?: string) {
-    if (!currentAgentId || !currentMailbox) return;
     setSubmitting(true);
     setActionError(null);
     try {
-      const result = await submitReview(
-        currentAgentId,
-        currentMailbox,
-        email.id,
-        action,
-        editedReply
-      );
+      const result = await submitReview(email.id, action, editedReply);
       applyReview(email.id, result);
     } catch (err) {
       setActionError(

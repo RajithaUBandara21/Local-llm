@@ -7,7 +7,7 @@ from app.routes.gmail import (
     gmail_oauth_callback_endpoint,
     gmail_status_endpoint,
 )
-from app.schemas import GmailConnectRequest, GmailConnection
+from app.schemas import GmailConnection
 
 
 class FakeGmailOAuthService:
@@ -19,10 +19,9 @@ class FakeGmailOAuthService:
         self.completed_with = None
         self.disconnected = False
 
-    def build_authorization_url(self, mailbox):
+    def build_authorization_url(self):
         if self.connect_error:
             raise self.connect_error
-        self.requested_mailbox = mailbox
         return self.authorization_url
 
     def complete_authorization(self, code, state):
@@ -40,21 +39,15 @@ class FakeGmailOAuthService:
 def test_connect_endpoint_returns_the_authorization_url():
     service = FakeGmailOAuthService(authorization_url="https://accounts.google.com/o/oauth2/auth?mock=1")
 
-    result = connect_gmail_endpoint(GmailConnectRequest(mailbox="support"), service)
+    result = connect_gmail_endpoint(service)
 
     assert result == {"authorization_url": "https://accounts.google.com/o/oauth2/auth?mock=1"}
-    assert service.requested_mailbox == "support"
 
 
-def test_connect_endpoint_propagates_404_and_503():
-    not_found = FakeGmailOAuthService(connect_error=HTTPException(status_code=404, detail="no such mailbox"))
-    with pytest.raises(HTTPException) as exc_info:
-        connect_gmail_endpoint(GmailConnectRequest(mailbox="ghost"), not_found)
-    assert exc_info.value.status_code == 404
-
+def test_connect_endpoint_propagates_503():
     unconfigured = FakeGmailOAuthService(connect_error=HTTPException(status_code=503, detail="not configured"))
     with pytest.raises(HTTPException) as exc_info:
-        connect_gmail_endpoint(GmailConnectRequest(mailbox="support"), unconfigured)
+        connect_gmail_endpoint(unconfigured)
     assert exc_info.value.status_code == 503
 
 
@@ -102,7 +95,7 @@ def test_status_endpoint_returns_none_or_the_connection():
     disconnected = FakeGmailOAuthService(connection=None)
     assert gmail_status_endpoint(disconnected) is None
 
-    connection = GmailConnection(mailbox="support", email="agent@example.com", connected_at="2026-01-01T00:00:00Z")
+    connection = GmailConnection(email="person@example.com", connected_at="2026-01-01T00:00:00Z")
     connected = FakeGmailOAuthService(connection=connection)
     assert gmail_status_endpoint(connected) == connection
 

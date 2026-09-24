@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import type { MailboxEmail } from "@/lib/types";
+import type { ReviewableEmail } from "@/lib/types";
 import { PriorityBadge } from "./PriorityBadge";
 import { ActionBar } from "./ActionBar";
 
-export function EmailDetail({ email }: Readonly<{ email: MailboxEmail }>) {
+export function EmailDetail({ email }: Readonly<{ email: ReviewableEmail }>) {
   const result = email.triage?.result;
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(result?.suggested_reply ?? "");
@@ -28,9 +28,7 @@ export function EmailDetail({ email }: Readonly<{ email: MailboxEmail }>) {
       <div className="detail-top">
         <div>
           <p className="detail-subject">{email.subject}</p>
-          <p className="detail-sender">
-            {email.sender} &middot; {email.mailbox}
-          </p>
+          <p className="detail-sender">{email.sender}</p>
         </div>
         <div className="detail-meta">
           <PriorityBadge priority={result.priority} />

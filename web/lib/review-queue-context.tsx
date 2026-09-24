@@ -8,13 +8,11 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { ApiError, getMailboxEmails } from "./api";
-import { useAgent } from "./agent-context";
-import { useMailbox } from "./mailbox-context";
+import { ApiError, getEmails } from "./api";
 import { PRIORITY_ORDER } from "./constants";
 import type {
   Category,
-  MailboxEmail,
+  ReviewableEmail,
   Priority,
   ReviewAction,
   TriageResult,
@@ -38,10 +36,10 @@ interface ReviewQueueContextValue {
   setFilters: (filters: Filters) => void;
   selectedId: number | null;
   select: (id: number | null) => void;
-  queueItems: MailboxEmail[];
-  filteredQueueItems: MailboxEmail[];
-  manualReviewItems: MailboxEmail[];
-  selectedEmail: MailboxEmail | null;
+  queueItems: ReviewableEmail[];
+  filteredQueueItems: ReviewableEmail[];
+  manualReviewItems: ReviewableEmail[];
+  selectedEmail: ReviewableEmail | null;
   applyReview: (emailId: number, review: ReviewAction) => void;
 }
 
@@ -51,15 +49,15 @@ const ReviewQueueContext = createContext<ReviewQueueContextValue | null>(
 
 // A validated draft only ever exists once triage succeeded; this both narrows
 // the type and is the single place that invariant is spelled out.
-function okResult(email: MailboxEmail): TriageResult | null {
+function okResult(email: ReviewableEmail): TriageResult | null {
   return email.triage?.status === "ok" ? email.triage.result : null;
 }
 
-function isPendingOk(email: MailboxEmail): boolean {
+function isPendingOk(email: ReviewableEmail): boolean {
   return okResult(email) !== null && email.review === null;
 }
 
-function isPendingManualReview(email: MailboxEmail): boolean {
+function isPendingManualReview(email: ReviewableEmail): boolean {
   return (
     (email.triage?.status === "needs_review" ||
       email.triage?.status === "failed") &&
@@ -70,37 +68,21 @@ function isPendingManualReview(email: MailboxEmail): boolean {
 export function ReviewQueueProvider({
   children,
 }: Readonly<{ children: ReactNode }>) {
-  const { currentAgentId } = useAgent();
-  const { currentMailbox } = useMailbox();
-  const [emails, setEmails] = useState<MailboxEmail[]>([]);
+  const [emails, setEmails] = useState<ReviewableEmail[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<ReviewView>("queue");
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
-  // Reset is derived state (mailbox changed), not an effect: adjust it during
-  // render so it lands before the fetch effect below ever sees the new value.
-  const [trackedMailbox, setTrackedMailbox] = useState(currentMailbox);
-  if (currentMailbox !== trackedMailbox) {
-    setTrackedMailbox(currentMailbox);
-    setEmails([]);
-    setView("queue");
-    setFilters(DEFAULT_FILTERS);
-    setSelectedId(null);
-  }
-
   useEffect(() => {
-    if (!currentAgentId || !currentMailbox) {
-      return;
-    }
     let cancelled = false;
 
-    async function load(agentId: string, mailbox: string) {
+    async function load() {
       setLoading(true);
       setError(null);
       try {
-        const loaded = await getMailboxEmails(agentId, mailbox);
+        const loaded = await getEmails();
         if (!cancelled) setEmails(loaded);
       } catch (err) {
         if (cancelled) return;
@@ -113,11 +95,11 @@ export function ReviewQueueProvider({
       }
     }
 
-    load(currentAgentId, currentMailbox);
+    load();
     return () => {
       cancelled = true;
     };
-  }, [currentAgentId, currentMailbox]);
+  }, []);
 
   const queueItems = useMemo(() => {
     return emails.filter(isPendingOk).sort((a, b) => {

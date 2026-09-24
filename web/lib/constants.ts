@@ -32,16 +32,6 @@ export const MOCK_BATCH_SIZE = 10;
 // the delay a real insert would have, with no backend meaning.
 export const MOCK_INSERT_DELAY_MS = 700;
 
-// Admin dashboard (feature 23) mock mailbox/assignment fixture, mirroring
-// data/agents.json's `mailboxes` object. No endpoint lists all mailboxes or
-// all mailbox assignments across agents, so this seeds the admin screen's
-// starting state instead of a live call. Feature 26 owns the real shape.
-export const MOCK_MAILBOX_ASSIGNMENTS: Record<string, string[]> = {
-  support: ["asha", "ben", "chen", "dana"],
-  refunds: ["asha", "ben"],
-  deliveries: ["chen", "dana"],
-};
-
 // Fixed mock Gmail account shown once a connection is simulated; feature 26
 // owns the real OAuth identity.
 export const MOCK_GMAIL_ACCOUNT_EMAIL = "northport.support@gmail.com";

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, Response, status
 
 from app.dependencies import get_batch_service
-from app.schemas import BatchRequest, BatchStatus
+from app.schemas import BatchRequest, BatchStatus, ReviewableEmail, ReviewAction, ReviewActionRequest
 from app.services.batch import BatchService
 
 router = APIRouter()
@@ -40,13 +40,12 @@ def resume_batch_endpoint(
     return batch
 
 
-@router.post("/api/mailboxes/{mailbox}/bulk-insert", response_model=BatchStatus)
+@router.post("/api/bulk-insert", response_model=BatchStatus)
 def bulk_insert_endpoint(
-    mailbox: str,
     background_tasks: BackgroundTasks,
     service: BatchService = Depends(get_batch_service)
 ):
-    batch = service.bulk_insert(mailbox)
+    batch = service.bulk_insert()
     background_tasks.add_task(service.run, batch.id)
     return batch
 
@@ -54,3 +53,15 @@ def bulk_insert_endpoint(
 @router.delete("/api/batches/{batch_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 def delete_batch_endpoint(batch_id: int, service: BatchService = Depends(get_batch_service)):
     service.delete(batch_id)
+
+
+@router.get("/api/emails", response_model=list[ReviewableEmail])
+def list_emails_endpoint(batch_id: int | None = None, service: BatchService = Depends(get_batch_service)):
+    return service.emails(batch_id)
+
+
+@router.post("/api/emails/{email_id}/review", response_model=ReviewAction)
+def review_email_endpoint(
+    email_id: int, request: ReviewActionRequest, service: BatchService = Depends(get_batch_service)
+):
+    return service.review(email_id, request.action, request.edited_reply)

@@ -41,7 +41,6 @@ class LoadedEmail(BaseModel):
     subject: str
     body_clean: str
     received_at: datetime | None
-    mailbox: str | None
 
     @field_validator("received_at")
     @classmethod
@@ -129,38 +128,14 @@ class BatchStatus(BaseModel):
     finished_at: datetime | None = None
 
 
-class Agent(BaseModel):
-    id: NonBlankText
-    name: NonBlankText
-
-
-class AgentRenameRequest(BaseModel):
-    name: NonBlankText
-
-
-class MailboxCreateRequest(BaseModel):
-    name: NonBlankText
-
-
-class Seed(BaseModel):
-    """Agents and which of them may read each mailbox, as loaded from the seed file."""
-    agents: list[Agent]
-    assignments: dict[str, list[str]]
-
-
 class GmailConnection(BaseModel):
     """The single stored Gmail connection; never carries the refresh token."""
-    mailbox: str
     email: str
     connected_at: datetime
 
 
-class GmailConnectRequest(BaseModel):
-    mailbox: NonBlankText
-
-
 class ReviewActionRequest(BaseModel):
-    """An agent's decision on one email's suggested reply."""
+    """A reviewer's decision on one email's suggested reply."""
     action: ReviewActionType
     edited_reply: str | None = None
 
@@ -178,14 +153,13 @@ class ReviewAction(BaseModel):
     """A stored review decision; every action is kept, the latest is shown on MailboxEmail."""
     id: int
     email_id: int
-    agent_id: str
     action: ReviewActionType
     edited_reply: str | None = None
     created_at: datetime
 
 
-class MailboxEmail(StoredEmail):
-    """An email as an agent sees it: its batch, the stored triage outcome, and the latest review action, if any."""
+class ReviewableEmail(StoredEmail):
+    """One stored email: its batch, the stored triage outcome, and the latest review action, if any."""
     batch_id: int
     triage: TriageResponse | None = None
     review: ReviewAction | None = None

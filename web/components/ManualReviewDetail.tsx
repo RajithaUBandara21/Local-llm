@@ -1,8 +1,8 @@
-import type { MailboxEmail } from "@/lib/types";
+import type { ReviewableEmail } from "@/lib/types";
 
 export function ManualReviewDetail({
   email,
-}: Readonly<{ email: MailboxEmail }>) {
+}: Readonly<{ email: ReviewableEmail }>) {
   const triage = email.triage;
   if (!triage) return null;
   const failed = triage.status === "failed";
@@ -12,9 +12,7 @@ export function ManualReviewDetail({
       <div className="detail-top">
         <div>
           <p className="detail-subject">{email.subject}</p>
-          <p className="detail-sender">
-            {email.sender} &middot; {email.mailbox}
-          </p>
+          <p className="detail-sender">{email.sender}</p>
         </div>
         <span className={`status-pill ${triage.status}`}>
           {failed ? "failed" : "needs review"}

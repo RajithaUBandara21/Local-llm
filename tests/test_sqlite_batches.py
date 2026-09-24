@@ -8,13 +8,12 @@ from app.repositories.sqlite_batches import SQLiteBatchRepository
 from app.schemas import LoadedEmail, TriageResponse, TriageResult
 
 
-def make_email(number: int, mailbox: str | None = "support") -> LoadedEmail:
+def make_email(number: int) -> LoadedEmail:
     return LoadedEmail(
         sender=f"sender{number}@example.com",
         subject=f"Subject {number}",
         body_clean=f"Body {number}",
         received_at=datetime(2026, 3, 2, 8, number, tzinfo=timezone.utc),
-        mailbox=mailbox,
     )
 
 
@@ -68,13 +67,12 @@ def test_a_new_batch_is_running_with_zero_counts(repo):
 
 
 def test_emails_are_stored_in_file_order_and_all_pending(repo):
-    batch_id = repo.create_batch("mail.csv", [make_email(1), make_email(2, mailbox=None), make_email(3)])
+    batch_id = repo.create_batch("mail.csv", [make_email(1), make_email(2), make_email(3)])
 
     pending = repo.pending_emails(batch_id)
 
     assert [email.subject for email in pending] == ["Subject 1", "Subject 2", "Subject 3"]
     assert pending[0].id < pending[1].id < pending[2].id
-    assert pending[1].mailbox is None
     assert pending[0].received_at == datetime(2026, 3, 2, 8, 1, tzinfo=timezone.utc)
 
 
@@ -212,45 +210,33 @@ def test_values_are_bound_not_formatted_into_sql(repo):
     assert rows(repo, "SELECT COUNT(*) AS n FROM emails")[0]["n"] == 1
 
 
-def test_a_mailbox_read_returns_only_that_mailbox_in_email_order(repo):
-    batch_id = repo.create_batch(
-        "mail.csv",
-        [make_email(1, "support"), make_email(2, "refunds"), make_email(3, "support"), make_email(4, None)],
-    )
+def test_list_emails_returns_every_email_in_id_order(repo):
+    batch_id = repo.create_batch("mail.csv", [make_email(1), make_email(2), make_email(3)])
 
-    emails = repo.list_mailbox_emails("support")
+    emails = repo.list_emails()
 
-    assert [email.subject for email in emails] == ["Subject 1", "Subject 3"]
-    assert {email.mailbox for email in emails} == {"support"}
+    assert [email.subject for email in emails] == ["Subject 1", "Subject 2", "Subject 3"]
     assert {email.batch_id for email in emails} == {batch_id}
-    assert repo.list_mailbox_emails("nowhere") == []
 
 
-def test_an_email_with_no_mailbox_is_never_returned(repo):
-    repo.create_batch("mail.mbox", [make_email(1, None)])
+def test_list_emails_can_be_narrowed_to_one_batch(repo):
+    first = repo.create_batch("a.csv", [make_email(1)])
+    second = repo.create_batch("b.csv", [make_email(2)])
 
-    assert repo.list_mailbox_emails("None") == []
-    assert repo.list_mailbox_emails("") == []
-
-
-def test_a_mailbox_read_can_be_narrowed_to_one_batch(repo):
-    first = repo.create_batch("a.csv", [make_email(1, "support")])
-    second = repo.create_batch("b.csv", [make_email(2, "support")])
-
-    assert [email.subject for email in repo.list_mailbox_emails("support", second)] == ["Subject 2"]
-    assert [email.subject for email in repo.list_mailbox_emails("support", first)] == ["Subject 1"]
-    assert len(repo.list_mailbox_emails("support")) == 2
-    assert repo.list_mailbox_emails("support", 999) == []
+    assert [email.subject for email in repo.list_emails(second)] == ["Subject 2"]
+    assert [email.subject for email in repo.list_emails(first)] == ["Subject 1"]
+    assert len(repo.list_emails()) == 2
+    assert repo.list_emails(999) == []
 
 
-def test_a_mailbox_read_rebuilds_each_stored_outcome(repo):
-    batch_id = repo.create_batch("mail.csv", [make_email(n, "support") for n in range(1, 5)])
+def test_list_emails_rebuilds_each_stored_outcome(repo):
+    batch_id = repo.create_batch("mail.csv", [make_email(n) for n in range(1, 5)])
     ok, review, failed, unprocessed = repo.pending_emails(batch_id)
     repo.save_result(ok.id, ok_response(flags=["stale_context"], flag_reason="Old order.", confidence=0.6))
     repo.save_result(review.id, failed_response("needs_review", "Invalid model output after 2 attempts: x"))
     repo.save_result(failed.id, failed_response())
 
-    emails = repo.list_mailbox_emails("support")
+    emails = repo.list_emails()
 
     by_id = {email.id: email for email in emails}
     assert by_id[ok.id].triage.status == "ok"
@@ -266,37 +252,37 @@ def test_a_mailbox_read_rebuilds_each_stored_outcome(repo):
 
 
 def test_an_email_with_no_review_action_has_none(repo):
-    batch_id = repo.create_batch("mail.csv", [make_email(1, "support")])
+    batch_id = repo.create_batch("mail.csv", [make_email(1)])
     (email,) = repo.pending_emails(batch_id)
 
     assert repo.get_email(email.id).review is None
-    assert repo.list_mailbox_emails("support")[0].review is None
+    assert repo.list_emails()[0].review is None
 
 
 def test_a_saved_review_action_appears_as_the_latest_on_both_reads(repo):
-    batch_id = repo.create_batch("mail.csv", [make_email(1, "support")])
+    batch_id = repo.create_batch("mail.csv", [make_email(1)])
     (email,) = repo.pending_emails(batch_id)
 
-    saved = repo.save_review_action(email.id, "chen", "approve", None)
+    saved = repo.save_review_action(email.id, "approve", None)
 
-    assert (saved.email_id, saved.agent_id, saved.action, saved.edited_reply) == (email.id, "chen", "approve", None)
-    for review in (repo.get_email(email.id).review, repo.list_mailbox_emails("support")[0].review):
-        assert (review.id, review.agent_id, review.action) == (saved.id, "chen", "approve")
+    assert (saved.email_id, saved.action, saved.edited_reply) == (email.id, "approve", None)
+    for review in (repo.get_email(email.id).review, repo.list_emails()[0].review):
+        assert (review.id, review.action) == (saved.id, "approve")
 
 
 def test_a_second_review_action_becomes_the_latest_and_the_first_is_kept(repo):
-    batch_id = repo.create_batch("mail.csv", [make_email(1, "support")])
+    batch_id = repo.create_batch("mail.csv", [make_email(1)])
     (email,) = repo.pending_emails(batch_id)
-    repo.save_review_action(email.id, "chen", "reject", None)
+    repo.save_review_action(email.id, "reject", None)
 
-    second = repo.save_review_action(email.id, "dana", "edit", "Here is the corrected reply.")
+    second = repo.save_review_action(email.id, "edit", "Here is the corrected reply.")
 
     assert repo.get_email(email.id).review.id == second.id
-    assert (repo.get_email(email.id).review.agent_id, repo.get_email(email.id).review.edited_reply) == (
-        "dana", "Here is the corrected reply.",
+    assert (repo.get_email(email.id).review.action, repo.get_email(email.id).review.edited_reply) == (
+        "edit", "Here is the corrected reply.",
     )
-    assert [row["agent_id"] for row in rows(repo, "SELECT agent_id FROM review_actions ORDER BY id")] == [
-        "chen", "dana",
+    assert [row["action"] for row in rows(repo, "SELECT action FROM review_actions ORDER BY id")] == [
+        "reject", "edit",
     ]
 
 

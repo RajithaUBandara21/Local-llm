@@ -68,7 +68,7 @@ priority: category does not decide priority. Priority comes from money or legal 
 When unsure between two levels, choose the higher one. Spam is always low.
 
 summary: one or two sentences describing what the customer wants.
-suggested_reply: a short, polite draft reply for the agent to review. Do not promise refunds, dates, or outcomes you cannot know. Use null when out_of_policy is flagged.
+suggested_reply: a short, polite draft reply for a person to review. Do not promise refunds, dates, or outcomes you cannot know. Use null when out_of_policy is flagged.
 confidence: a number from 0.0 to 1.0 for how sure you are of category and priority.
 flags: an empty list, or any of these:
 - stale_context: the email refers to an earlier thread, order, or date you cannot see, so facts may be outdated. Do not state such facts as true in the draft.

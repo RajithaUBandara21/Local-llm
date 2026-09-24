@@ -40,7 +40,7 @@ def test_a_batch_status_rejects_an_unknown_status():
 
 
 def test_a_stored_email_is_a_loaded_email_with_an_id():
-    email = StoredEmail(id=7, sender="a@example.com", subject="s", body_clean="b", received_at=None, mailbox=None)
+    email = StoredEmail(id=7, sender="a@example.com", subject="s", body_clean="b", received_at=None)
 
     assert isinstance(email, LoadedEmail)
     assert email.id == 7

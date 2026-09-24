@@ -8,16 +8,12 @@ from fastapi import HTTPException
 
 from app.clients.base import LLMTimeoutError
 from app.config import TRIAGE_MAX_BODY_CHARS
-from app.repositories.sqlite_access import SQLiteAccessRepository
 from app.repositories.sqlite_batches import SQLiteBatchRepository
-from app.schemas import Agent, Seed
 from app.services import batch as batch_module
 from app.services.batch import BatchService
 from app.services.triage import TriageService
 from app.state import AppState
 from tests.fakes import FakeClient
-
-SEED = Seed(agents=[Agent(id="chen", name="Chen")], assignments={"support": ["chen"]})
 
 VALID_REPLY = json.dumps({
     "category": "delivery",
@@ -29,15 +25,15 @@ VALID_REPLY = json.dumps({
     "flag_reason": None,
 })
 INVALID_REPLY = json.dumps({"category": "delivery", "priority": "asap"})
-HEADER = "sender,subject,body,received_at,mailbox\n"
+HEADER = "sender,subject,body,received_at\n"
 
 
 class Crash(BaseException):
     """Stands in for a killed process: not an Exception, so nothing in the pipeline catches it."""
 
 
-def csv_text(bodies, mailbox="support"):
-    rows = [f'a{n}@example.com,Subject {n},"{body}",2026-03-02T08:00:00+00:00,{mailbox}\n' for n, body in enumerate(bodies, 1)]
+def csv_text(bodies):
+    rows = [f'a{n}@example.com,Subject {n},"{body}",2026-03-02T08:00:00+00:00\n' for n, body in enumerate(bodies, 1)]
     return HEADER + "".join(rows)
 
 
@@ -54,9 +50,7 @@ def make_service(tmp_path, mailbox_dir, client=None, state=None):
     client = client or FakeClient()
     db_path = tmp_path / "triage.db"
     repo = SQLiteBatchRepository(db_path)
-    access = SQLiteAccessRepository(db_path)
-    access.replace_directory(SEED)
-    return BatchService(repo, TriageService(client, state), state, mailbox_dir, access), client, state, repo
+    return BatchService(repo, TriageService(client, state), state, mailbox_dir), client, state, repo
 
 
 def generate_count(client):
@@ -81,7 +75,6 @@ def test_start_stores_the_batch_and_claims_the_worker_slot(tmp_path, mailbox_dir
     assert batch.active is True
     assert state.active_batch_id == batch.id
     assert [email.subject for email in repo.pending_emails(batch.id)] == [f"Subject {n}" for n in (1, 2, 3, 4)]
-    assert repo.pending_emails(batch.id)[0].mailbox == "support"
 
 
 def test_a_full_run_stores_every_result_and_log_row_and_completes(tmp_path, mailbox_dir):
@@ -378,15 +371,15 @@ def test_delete_batch_removes_the_batch_and_every_dependent_row(tmp_path, mailbo
     service, _, state, repo = make_service(tmp_path, mailbox_dir, client)
     batch = service.start("four.csv")
     service.run(batch.id)
-    triaged = repo.list_mailbox_emails("support", batch.id)
+    triaged = repo.list_emails(batch.id)
     email_id = triaged[0].id
-    repo.save_review_action(email_id, "chen", "approve", None)
+    repo.save_review_action(email_id, "approve", None)
     other = repo.create_batch("other.csv", [])
 
     repo.delete_batch(batch.id)
 
     assert [b.id for b in repo.list_batches()] == [other]
-    assert repo.list_mailbox_emails("support", batch.id) == []
+    assert repo.list_emails(batch.id) == []
     assert rows(repo, f"SELECT * FROM triage_results WHERE email_id = {email_id}") == []
     assert rows(repo, f"SELECT * FROM decision_log WHERE email_id = {email_id}") == []
     assert rows(repo, f"SELECT * FROM review_actions WHERE email_id = {email_id}") == []
@@ -405,42 +398,32 @@ def test_delete_batch_on_an_unknown_id_is_a_no_op(tmp_path, mailbox_dir):
 def test_bulk_insert_creates_a_tagged_batch_of_ten_synthetic_emails(tmp_path, mailbox_dir):
     service, _, state, repo = make_service(tmp_path, mailbox_dir)
 
-    batch = service.bulk_insert("support")
+    batch = service.bulk_insert()
 
     assert batch.total == 10
-    assert batch.source_file.startswith("test:support:")
+    assert batch.source_file.startswith("test:")
     assert batch.active is True
     assert state.active_batch_id == batch.id
-    emails = repo.list_mailbox_emails("support", batch.id)
+    emails = repo.list_emails(batch.id)
     assert len(emails) == 10
     assert [email.subject for email in emails] == [f"Test email {n}" for n in range(1, 11)]
 
 
 def test_bulk_insert_is_refused_while_a_batch_or_benchmark_is_active(tmp_path, mailbox_dir):
     service, _, state, repo = make_service(tmp_path, mailbox_dir)
-    service.bulk_insert("support")
+    service.bulk_insert()
 
     with pytest.raises(HTTPException) as error:
-        service.bulk_insert("support")
+        service.bulk_insert()
     assert error.value.status_code == 400
     assert [b.id for b in repo.list_batches()] == [1]
 
     state.active_batch_id = None
     state.benchmark_running = True
     with pytest.raises(HTTPException) as error:
-        service.bulk_insert("support")
+        service.bulk_insert()
     assert error.value.status_code == 400
     assert [b.id for b in repo.list_batches()] == [1]
-
-
-def test_bulk_insert_refuses_an_unknown_mailbox_and_creates_no_batch(tmp_path, mailbox_dir):
-    service, _, _, repo = make_service(tmp_path, mailbox_dir)
-
-    with pytest.raises(HTTPException) as error:
-        service.bulk_insert("not-a-real-mailbox")
-
-    assert error.value.status_code == 400
-    assert repo.list_batches() == []
 
 
 def test_delete_removes_an_idle_completed_batch(tmp_path, mailbox_dir):

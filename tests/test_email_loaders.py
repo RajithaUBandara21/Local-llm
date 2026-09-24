@@ -11,7 +11,7 @@ from app.schemas import LoadedEmail
 
 
 def make_email(received_at):
-    return LoadedEmail(sender="a@example.com", subject="Hi", body_clean="Body", received_at=received_at, mailbox=None)
+    return LoadedEmail(sender="a@example.com", subject="Hi", body_clean="Body", received_at=received_at)
 
 
 def test_aware_non_utc_datetime_becomes_same_instant_in_utc():
@@ -59,7 +59,6 @@ def test_csv_normal_file_loads_in_row_order(tmp_path):
     assert [e.subject for e in emails] == ["First", "Second"]
     assert emails[0].received_at == datetime(2026, 3, 2, 9, 15, tzinfo=timezone.utc)
     assert emails[1].received_at == datetime(2026, 3, 2, 10, 0, tzinfo=timezone.utc)
-    assert emails[0].mailbox is None
 
 
 def test_csv_bom_is_not_glued_to_first_header(tmp_path):
@@ -80,18 +79,15 @@ def test_csv_html_body_is_converted(tmp_path):
     assert CsvEmailLoader().load(path)[0].body_clean == "One\n\nTwo & more"
 
 
-def test_csv_extra_columns_are_ignored_and_mailbox_is_read(tmp_path):
+def test_csv_extra_columns_are_ignored(tmp_path):
     path = write_csv(
         tmp_path,
-        "sender,subject,body,received_at,category,mailbox\n"
-        "a@example.com,Hi,Body,,billing,support@example.com\n"
-        "b@example.com,Hi,Body,,billing,\n",
+        "sender,subject,body,received_at,category\n"
+        "a@example.com,Hi,Body,,billing\n",
     )
 
     emails = CsvEmailLoader().load(path)
 
-    assert emails[0].mailbox == "support@example.com"
-    assert emails[1].mailbox is None
     assert emails[0].received_at is None
 
 
@@ -164,7 +160,6 @@ def test_mbox_two_messages_load_in_order(tmp_path):
     assert [e.sender for e in emails] == ["Jo Smith <jo@example.com>", "sam@example.com"]
     assert [e.subject for e in emails] == ["Hello", "Again"]
     assert emails[0].body_clean == "Body text"
-    assert emails[0].mailbox is None
 
 
 def test_mbox_encoded_word_subject_and_sender_are_decoded(tmp_path):

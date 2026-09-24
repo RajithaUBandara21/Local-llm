@@ -11,7 +11,7 @@ export function ViewToggle() {
         <button
           type="button"
           className={`view-btn view-btn-queue${view === "queue" ? " active" : ""}`}
-          title="Show the priority-sorted queue for this mailbox"
+          title="Show the priority-sorted queue"
           onClick={() => setView("queue")}
         >
           Queue <span className="count">{queueItems.length}</span>

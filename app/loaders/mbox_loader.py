@@ -54,7 +54,6 @@ class MboxEmailLoader(IEmailLoader):
             subject=str(message.get("Subject", "")).strip(),
             body_clean=MboxEmailLoader._body(message),
             received_at=MboxEmailLoader._received_at(message, number),
-            mailbox=None,
         )
 
     @staticmethod

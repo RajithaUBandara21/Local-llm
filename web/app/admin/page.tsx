@@ -1,8 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { AgentsPanel } from "@/components/AgentsPanel";
-import { MailboxesPanel } from "@/components/MailboxesPanel";
 import { GmailPanel } from "@/components/GmailPanel";
 
 export default function AdminPage() {
@@ -26,18 +24,12 @@ export default function AdminPage() {
       <div className="page">
         <div className="page-header">
           <div>
-            <h1 className="page-title">Agents &amp; mailboxes</h1>
-            <p className="page-subtitle">
-              Manage support agents, mailboxes, and who can open what.
-            </p>
+            <h1 className="page-title">Admin</h1>
+            <p className="page-subtitle">Manage the Gmail connection.</p>
           </div>
         </div>
 
         <div className="admin-layout">
-          <AgentsPanel />
-
-          <MailboxesPanel />
-
           <GmailPanel />
         </div>
       </div>

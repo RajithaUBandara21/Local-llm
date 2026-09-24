@@ -17,11 +17,6 @@ export type TriageStatus = "ok" | "needs_review" | "failed";
 
 export type ReviewActionType = "approve" | "edit" | "reject";
 
-export interface Agent {
-  id: string;
-  name: string;
-}
-
 export interface TriageResult {
   category: Category;
   priority: Priority;
@@ -44,19 +39,17 @@ export interface TriageResponse {
 export interface ReviewAction {
   id: number;
   email_id: number;
-  agent_id: string;
   action: ReviewActionType;
   edited_reply: string | null;
   created_at: string;
 }
 
-export interface MailboxEmail {
+export interface ReviewableEmail {
   id: number;
   sender: string;
   subject: string;
   body_clean: string;
   received_at: string | null;
-  mailbox: string | null;
   batch_id: number;
   triage: TriageResponse | null;
   review: ReviewAction | null;
@@ -77,30 +70,19 @@ export interface BatchStatus {
 }
 
 // Client-only mock row for the bulk-insert test view (feature 22). Deliberately
-// distinct from MailboxEmail: it is never triaged or reviewed, never sent to
+// distinct from ReviewableEmail: it is never triaged or reviewed, never sent to
 // the backend, and never persisted. Feature 25 owns the real bulk-insert shape.
 export interface MockTestEmail {
   id: string;
-  mailbox: string;
   sender: string;
   subject: string;
   received_at: string;
 }
 
-// Admin dashboard (feature 23) mock types. No admin backend exists yet
-// (feature 26 owns it); these never round-trip through app/lib/api.ts.
-export interface AdminAgent {
-  id: string;
-  name: string;
-}
-
-export type AdminAssignments = Record<string, string[]>;
-
 export type GmailConnectionStatus = "disconnected" | "connected";
 
 export interface GmailConnection {
   status: GmailConnectionStatus;
-  connectedMailbox: string | null;
   connectedEmail: string | null;
   connectedAt: string | null;
 }

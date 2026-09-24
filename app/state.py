@@ -16,7 +16,6 @@ class AppState:
         # The single in-flight Gmail OAuth attempt, if any; a new connect overwrites it,
         # so only the most recently started attempt's state token is ever valid.
         self.pending_gmail_oauth_state: str | None = None
-        self.pending_gmail_oauth_mailbox: str | None = None
 
 
 global_state = AppState()

@@ -2,13 +2,10 @@ import pytest
 import requests
 from fastapi import HTTPException
 
-from app.repositories.sqlite_access import SQLiteAccessRepository
-from app.schemas import Agent, Seed
+from app.repositories.sqlite_gmail import SQLiteGmailRepository
 from app.services import gmail_oauth as gmail_oauth_module
 from app.services.gmail_oauth import GmailOAuthService
 from app.state import AppState
-
-SEED = Seed(agents=[Agent(id="asha", name="Asha")], assignments={"support": ["asha"], "refunds": []})
 
 
 class FakeCredentials:
@@ -33,10 +30,8 @@ class FakeFlow:
 
 
 @pytest.fixture
-def access(tmp_path):
-    repository = SQLiteAccessRepository(tmp_path / "triage.db")
-    repository.replace_directory(SEED)
-    return repository
+def gmail(tmp_path):
+    return SQLiteGmailRepository(tmp_path / "triage.db")
 
 
 @pytest.fixture
@@ -53,139 +48,123 @@ def configured(monkeypatch):
     monkeypatch.setattr(gmail_oauth_module, "GMAIL_TOKEN_ENCRYPTION_KEY", Fernet.generate_key().decode())
 
 
-def service(access, state):
-    return GmailOAuthService(access, state)
+def service(gmail, state):
+    return GmailOAuthService(gmail, state)
 
 
-def test_build_authorization_url_404s_for_an_unknown_mailbox(access, state, configured):
+def test_build_authorization_url_503s_when_gmail_is_not_configured(gmail, state):
     with pytest.raises(HTTPException) as exc_info:
-        service(access, state).build_authorization_url("ghost-mailbox")
-    assert exc_info.value.status_code == 404
-
-
-def test_build_authorization_url_503s_when_gmail_is_not_configured(access, state):
-    with pytest.raises(HTTPException) as exc_info:
-        service(access, state).build_authorization_url("support")
+        service(gmail, state).build_authorization_url()
     assert exc_info.value.status_code == 503
 
 
-def test_build_authorization_url_stores_pending_state_and_returns_the_url(access, state, configured, monkeypatch):
+def test_build_authorization_url_stores_pending_state_and_returns_the_url(gmail, state, configured, monkeypatch):
     fake_flow = FakeFlow()
     monkeypatch.setattr(gmail_oauth_module, "_build_flow", lambda: fake_flow)
 
-    url = service(access, state).build_authorization_url("support")
+    url = service(gmail, state).build_authorization_url()
 
     assert url == "https://accounts.google.com/o/oauth2/auth?mock=1"
-    assert state.pending_gmail_oauth_mailbox == "support"
     assert state.pending_gmail_oauth_state == fake_flow.authorization_kwargs["state"]
     assert fake_flow.authorization_kwargs["access_type"] == "offline"
     assert fake_flow.authorization_kwargs["prompt"] == "consent"
 
 
-def test_complete_authorization_400s_when_no_attempt_is_pending(access, state):
+def test_complete_authorization_400s_when_no_attempt_is_pending(gmail, state):
     with pytest.raises(HTTPException) as exc_info:
-        service(access, state).complete_authorization(code="abc", state="whatever")
+        service(gmail, state).complete_authorization(code="abc", state="whatever")
     assert exc_info.value.status_code == 400
 
 
-def test_complete_authorization_400s_on_a_state_mismatch(access, state):
+def test_complete_authorization_400s_on_a_state_mismatch(gmail, state):
     state.pending_gmail_oauth_state = "expected-state"
-    state.pending_gmail_oauth_mailbox = "support"
 
     with pytest.raises(HTTPException) as exc_info:
-        service(access, state).complete_authorization(code="abc", state="wrong-state")
+        service(gmail, state).complete_authorization(code="abc", state="wrong-state")
     assert exc_info.value.status_code == 400
 
 
 def test_complete_authorization_saves_the_connection_and_clears_pending_state(
-    access, state, configured, monkeypatch
+    gmail, state, configured, monkeypatch
 ):
     state.pending_gmail_oauth_state = "expected-state"
-    state.pending_gmail_oauth_mailbox = "support"
     fake_flow = FakeFlow()
     monkeypatch.setattr(gmail_oauth_module, "_build_flow", lambda: fake_flow)
     monkeypatch.setattr(
-        gmail_oauth_module.id_token, "verify_oauth2_token", lambda *args, **kwargs: {"email": "agent@example.com"}
+        gmail_oauth_module.id_token, "verify_oauth2_token", lambda *args, **kwargs: {"email": "person@example.com"}
     )
 
-    service(access, state).complete_authorization(code="auth-code", state="expected-state")
+    service(gmail, state).complete_authorization(code="auth-code", state="expected-state")
 
     assert fake_flow.fetched_code == "auth-code"
     assert state.pending_gmail_oauth_state is None
-    assert state.pending_gmail_oauth_mailbox is None
-    connection = access.get_gmail_connection()
-    assert connection.mailbox == "support"
-    assert connection.email == "agent@example.com"
+    connection = gmail.get_gmail_connection()
+    assert connection.email == "person@example.com"
 
     from cryptography.fernet import Fernet
 
-    stored_token = access.get_gmail_refresh_token()
+    stored_token = gmail.get_gmail_refresh_token()
     decrypted = Fernet(gmail_oauth_module.GMAIL_TOKEN_ENCRYPTION_KEY.encode()).decrypt(stored_token)
     assert decrypted == b"refresh-token-value"
 
 
-def test_status_reflects_the_stored_connection(access, state, configured, monkeypatch):
-    assert service(access, state).status() is None
+def test_status_reflects_the_stored_connection(gmail, state, configured, monkeypatch):
+    assert service(gmail, state).status() is None
 
-    access.save_gmail_connection("support", "agent@example.com", b"encrypted")
-    connection = service(access, state).status()
-    assert connection.mailbox == "support"
-    assert connection.email == "agent@example.com"
+    gmail.save_gmail_connection("person@example.com", b"encrypted")
+    connection = service(gmail, state).status()
+    assert connection.email == "person@example.com"
 
 
-def test_disconnect_when_nothing_was_connected_succeeds_without_calling_revoke(access, state, monkeypatch):
+def test_disconnect_when_nothing_was_connected_succeeds_without_calling_revoke(gmail, state, monkeypatch):
     def fail_if_called(*args, **kwargs):
         raise AssertionError("requests.post should not be called when nothing is connected")
 
     monkeypatch.setattr(gmail_oauth_module.requests, "post", fail_if_called)
 
-    service(access, state).disconnect()
-    assert access.get_gmail_connection() is None
+    service(gmail, state).disconnect()
+    assert gmail.get_gmail_connection() is None
 
 
-def test_disconnect_revokes_then_deletes_when_revoke_succeeds(access, state, configured, monkeypatch):
+def test_disconnect_revokes_then_deletes_when_revoke_succeeds(gmail, state, configured, monkeypatch):
     from cryptography.fernet import Fernet
 
     key = gmail_oauth_module.GMAIL_TOKEN_ENCRYPTION_KEY
-    access.save_gmail_connection(
-        "support", "agent@example.com", Fernet(key.encode()).encrypt(b"the-refresh-token")
-    )
+    gmail.save_gmail_connection("person@example.com", Fernet(key.encode()).encrypt(b"the-refresh-token"))
     calls = []
     monkeypatch.setattr(
         gmail_oauth_module.requests, "post", lambda url, params, timeout: calls.append((url, params))
     )
 
-    service(access, state).disconnect()
+    service(gmail, state).disconnect()
 
     assert calls == [(gmail_oauth_module.GOOGLE_REVOKE_URL, {"token": "the-refresh-token"})]
-    assert access.get_gmail_connection() is None
+    assert gmail.get_gmail_connection() is None
 
 
-def test_disconnect_still_deletes_locally_when_revoke_raises(access, state, configured, monkeypatch):
+def test_disconnect_still_deletes_locally_when_revoke_raises(gmail, state, configured, monkeypatch):
     from cryptography.fernet import Fernet
 
     key = gmail_oauth_module.GMAIL_TOKEN_ENCRYPTION_KEY
-    access.save_gmail_connection(
-        "support", "agent@example.com", Fernet(key.encode()).encrypt(b"the-refresh-token")
-    )
+    gmail.save_gmail_connection("person@example.com", Fernet(key.encode()).encrypt(b"the-refresh-token"))
 
     def raise_connection_error(*args, **kwargs):
         raise requests.RequestException("network is down")
 
     monkeypatch.setattr(gmail_oauth_module.requests, "post", raise_connection_error)
 
-    service(access, state).disconnect()
-    assert access.get_gmail_connection() is None
+    service(gmail, state).disconnect()
+    assert gmail.get_gmail_connection() is None
 
 
-def test_disconnect_still_deletes_locally_when_the_encryption_key_is_invalid(access, state, monkeypatch):
+def test_disconnect_still_deletes_locally_when_the_encryption_key_is_invalid(gmail, state, monkeypatch):
     monkeypatch.setattr(gmail_oauth_module, "GMAIL_TOKEN_ENCRYPTION_KEY", "not-a-valid-fernet-key")
-    access.save_gmail_connection("support", "agent@example.com", b"encrypted-under-a-different-key")
+    gmail.save_gmail_connection("person@example.com", b"encrypted-under-a-different-key")
 
     def fail_if_called(*args, **kwargs):
         raise AssertionError("requests.post should not be called when the key cannot decrypt the token")
 
     monkeypatch.setattr(gmail_oauth_module.requests, "post", fail_if_called)
 
-    service(access, state).disconnect()
-    assert access.get_gmail_connection() is None
+    service(gmail, state).disconnect()
+    assert gmail.get_gmail_connection() is None

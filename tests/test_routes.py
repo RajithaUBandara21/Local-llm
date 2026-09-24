@@ -2,10 +2,8 @@ import json
 
 import pytest
 from fastapi import BackgroundTasks, HTTPException
-from pydantic import ValidationError
 
 from app.repositories.base import IMetricsRepository
-from app.repositories.sqlite_access import SQLiteAccessRepository
 from app.repositories.sqlite_batches import SQLiteBatchRepository
 from app.routes.benchmark import (
     get_benchmark_config_endpoint,
@@ -13,35 +11,19 @@ from app.routes.benchmark import (
     get_dashboard_metrics_endpoint,
     start_benchmark_endpoint,
 )
-from app.routes.access import (
-    assign_mailbox_endpoint,
-    create_agent_endpoint,
-    create_mailbox_endpoint,
-    delete_agent_endpoint,
-    delete_mailbox_endpoint,
-    list_agents_endpoint,
-    list_all_mailboxes_endpoint,
-    list_mailbox_emails_endpoint,
-    list_mailboxes_endpoint,
-    rename_agent_endpoint,
-    review_email_endpoint,
-    unassign_mailbox_endpoint,
-)
 from app.routes.batches import (
     bulk_insert_endpoint,
     create_batch_endpoint,
     delete_batch_endpoint,
     get_batch_endpoint,
     list_batches_endpoint,
+    list_emails_endpoint,
     resume_batch_endpoint,
+    review_email_endpoint,
 )
 from app.routes.health import health_check
 from app.routes.triage import triage_endpoint
-from app.schemas import (
-    Agent, AgentRenameRequest, BatchRequest, BenchmarkRequest, BenchmarkSetting, LoadedEmail, MailboxCreateRequest,
-    ReviewActionRequest, Seed, TriageRequest,
-)
-from app.services.access import AccessService
+from app.schemas import BatchRequest, BenchmarkRequest, BenchmarkSetting, ReviewActionRequest, TriageRequest
 from app.services.batch import BatchService
 from app.services.benchmark import BenchmarkService
 from app.services.triage import TriageService
@@ -180,16 +162,14 @@ def make_batch_service(tmp_path, state=None):
     mailbox = tmp_path / "mail"
     mailbox.mkdir(exist_ok=True)
     (mailbox / "two.csv").write_text(
-        "sender,subject,body,received_at,mailbox\n"
-        "a@example.com,One,First,2026-03-02T08:00:00+00:00,support\n"
-        "b@example.com,Two,Second,2026-03-02T08:01:00+00:00,support\n",
+        "sender,subject,body,received_at\n"
+        "a@example.com,One,First,2026-03-02T08:00:00+00:00\n"
+        "b@example.com,Two,Second,2026-03-02T08:01:00+00:00\n",
         encoding="utf-8",
     )
     db_path = tmp_path / "triage.db"
     repository = SQLiteBatchRepository(db_path)
-    access = SQLiteAccessRepository(db_path)
-    access.replace_directory(Seed(agents=[Agent(id="chen", name="Chen")], assignments={"support": ["chen"]}))
-    return BatchService(repository, TriageService(FakeClient(), state), state, mailbox, access), state
+    return BatchService(repository, TriageService(FakeClient(), state), state, mailbox), state
 
 
 def test_creating_a_batch_schedules_its_worker_and_returns_the_status(tmp_path):
@@ -249,24 +229,13 @@ def test_bulk_insert_schedules_its_worker_and_returns_the_status(tmp_path):
     service, state = make_batch_service(tmp_path)
     tasks = BackgroundTasks()
 
-    batch = bulk_insert_endpoint("support", tasks, service)
+    batch = bulk_insert_endpoint(tasks, service)
 
     assert (batch.total, batch.active) == (10, True)
-    assert batch.source_file.startswith("test:support:")
+    assert batch.source_file.startswith("test:")
     assert [task.func for task in tasks.tasks] == [service.run]
     assert tasks.tasks[0].args == (batch.id,)
     assert state.active_batch_id == batch.id
-
-
-def test_bulk_insert_refuses_an_unknown_mailbox_and_schedules_nothing(tmp_path):
-    service, _ = make_batch_service(tmp_path)
-    tasks = BackgroundTasks()
-
-    with pytest.raises(HTTPException) as error:
-        bulk_insert_endpoint("not-a-real-mailbox", tasks, service)
-
-    assert error.value.status_code == 400
-    assert tasks.tasks == []
 
 
 def test_delete_batch_endpoint_removes_it_and_propagates_service_errors(tmp_path):
@@ -300,142 +269,31 @@ def test_a_benchmark_cannot_start_while_a_batch_is_running():
     assert tasks.tasks == []
 
 
-def make_access_service(tmp_path):
-    path = tmp_path / "triage.db"
-    batches = SQLiteBatchRepository(path)
-    access = AccessService(SQLiteAccessRepository(path), batches)
-    access.seed(Seed(
-        agents=[Agent(id="asha", name="Asha"), Agent(id="chen", name="Chen")],
-        assignments={"support": ["asha", "chen"], "deliveries": ["chen"]},
-    ))
-    batches.create_batch("mail.csv", [LoadedEmail(
-        sender="a@example.com", subject="Parcel", body_clean="Where is it?", received_at=None, mailbox="deliveries",
-    )])
-    return access
+def test_list_emails_endpoint_returns_every_stored_email(tmp_path):
+    service, _ = make_batch_service(tmp_path)
+    batch = create_batch_endpoint(BatchRequest(file="two.csv"), BackgroundTasks(), service)
 
+    emails = list_emails_endpoint(None, service)
 
-def test_the_agent_list_needs_no_identity(tmp_path):
-    assert [agent.id for agent in list_agents_endpoint(make_access_service(tmp_path))] == ["asha", "chen"]
-
-
-def test_an_agent_header_is_passed_through_to_the_mailbox_list(tmp_path):
-    service = make_access_service(tmp_path)
-
-    assert list_mailboxes_endpoint("asha", service) == ["support"]
-    assert list_mailboxes_endpoint("chen", service) == ["deliveries", "support"]
-
-
-def test_a_mailbox_read_returns_the_emails_for_an_assigned_agent(tmp_path):
-    service = make_access_service(tmp_path)
-
-    emails = list_mailbox_emails_endpoint("deliveries", None, "chen", service)
-
-    assert [email.subject for email in emails] == ["Parcel"]
+    assert [email.subject for email in emails] == ["One", "Two"]
     assert emails[0].triage is None
-
-
-def test_a_mailbox_read_is_refused_for_an_unassigned_agent_and_without_an_identity(tmp_path):
-    service = make_access_service(tmp_path)
-
-    with pytest.raises(HTTPException) as denied:
-        list_mailbox_emails_endpoint("deliveries", None, "asha", service)
-    with pytest.raises(HTTPException) as anonymous:
-        list_mailbox_emails_endpoint("deliveries", None, None, service)
-    with pytest.raises(HTTPException) as unknown:
-        list_mailboxes_endpoint("zed", service)
-
-    assert (denied.value.status_code, anonymous.value.status_code, unknown.value.status_code) == (403, 401, 401)
+    assert list_emails_endpoint(batch.id, service) == emails
 
 
 def test_a_review_action_is_passed_through_and_returned(tmp_path):
-    service = make_access_service(tmp_path)
-    (parcel,) = list_mailbox_emails_endpoint("deliveries", None, "chen", service)
+    service, _ = make_batch_service(tmp_path)
+    create_batch_endpoint(BatchRequest(file="two.csv"), BackgroundTasks(), service)
+    (first, _) = list_emails_endpoint(None, service)
 
-    review = review_email_endpoint(
-        "deliveries", parcel.id, ReviewActionRequest(action="approve"), "chen", service
-    )
+    review = review_email_endpoint(first.id, ReviewActionRequest(action="approve"), service)
 
-    assert (review.email_id, review.agent_id, review.action) == (parcel.id, "chen", "approve")
-
-
-def test_a_review_action_from_an_unassigned_agent_is_refused(tmp_path):
-    service = make_access_service(tmp_path)
-    (parcel,) = list_mailbox_emails_endpoint("deliveries", None, "chen", service)
-
-    with pytest.raises(HTTPException) as denied:
-        review_email_endpoint("deliveries", parcel.id, ReviewActionRequest(action="approve"), "asha", service)
-
-    assert denied.value.status_code == 403
+    assert (review.email_id, review.action) == (first.id, "approve")
 
 
-def test_create_agent_endpoint_returns_the_created_agent_and_rejects_a_duplicate(tmp_path):
-    service = make_access_service(tmp_path)
+def test_a_review_action_on_an_unknown_email_is_404(tmp_path):
+    service, _ = make_batch_service(tmp_path)
 
-    created = create_agent_endpoint(Agent(id="priya", name="Priya"), service)
-
-    assert created == Agent(id="priya", name="Priya")
-    with pytest.raises(HTTPException) as duplicate:
-        create_agent_endpoint(Agent(id="priya", name="Priya"), service)
-    assert duplicate.value.status_code == 409
-
-
-@pytest.mark.parametrize("blank", ["", "   "])
-def test_blank_agent_or_mailbox_names_are_rejected_by_request_validation_before_the_handler_runs(blank):
-    # NonBlankText on the request body models is the actual HTTP-reachable guard (a 422 from
-    # FastAPI's request validation); the service layer never sees a blank value to check itself.
-    with pytest.raises(ValidationError):
-        Agent(id=blank, name="Name")
-    with pytest.raises(ValidationError):
-        Agent(id="id", name=blank)
-    with pytest.raises(ValidationError):
-        AgentRenameRequest(name=blank)
-    with pytest.raises(ValidationError):
-        MailboxCreateRequest(name=blank)
-
-
-def test_rename_agent_endpoint_returns_the_updated_agent_and_404s_unknown(tmp_path):
-    service = make_access_service(tmp_path)
-
-    renamed = rename_agent_endpoint("chen", AgentRenameRequest(name="Chen Wu"), service)
-
-    assert renamed == Agent(id="chen", name="Chen Wu")
     with pytest.raises(HTTPException) as missing:
-        rename_agent_endpoint("zed", AgentRenameRequest(name="Zed"), service)
+        review_email_endpoint(999, ReviewActionRequest(action="approve"), service)
+
     assert missing.value.status_code == 404
-
-
-def test_delete_agent_endpoint_is_idempotent(tmp_path):
-    service = make_access_service(tmp_path)
-
-    assert delete_agent_endpoint("chen", service) is None
-    assert delete_agent_endpoint("chen", service) is None
-    assert "chen" not in [agent.id for agent in list_agents_endpoint(service)]
-
-
-def test_admin_mailbox_endpoints_list_create_and_delete(tmp_path):
-    service = make_access_service(tmp_path)
-
-    assert list_all_mailboxes_endpoint(service) == ["deliveries", "support"]
-
-    created = create_mailbox_endpoint(MailboxCreateRequest(name="billing"), service)
-    assert created == {"name": "billing"}
-    assert list_all_mailboxes_endpoint(service) == ["billing", "deliveries", "support"]
-
-    with pytest.raises(HTTPException) as duplicate:
-        create_mailbox_endpoint(MailboxCreateRequest(name="billing"), service)
-    assert duplicate.value.status_code == 409
-
-    assert delete_mailbox_endpoint("billing", service) is None
-    assert list_all_mailboxes_endpoint(service) == ["deliveries", "support"]
-
-
-def test_assign_and_unassign_mailbox_endpoints_are_idempotent(tmp_path):
-    service = make_access_service(tmp_path)
-
-    assert assign_mailbox_endpoint("support", "chen", service) is None
-    assert assign_mailbox_endpoint("support", "chen", service) is None
-    assert list_mailboxes_endpoint("chen", service) == ["deliveries", "support"]
-
-    assert unassign_mailbox_endpoint("support", "chen", service) is None
-    assert unassign_mailbox_endpoint("support", "chen", service) is None
-    assert list_mailboxes_endpoint("chen", service) == ["deliveries"]

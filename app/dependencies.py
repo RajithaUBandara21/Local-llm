@@ -5,11 +5,10 @@ from fastapi import Depends
 from app.clients.base import ILLMClient
 from app.clients.ollama import OllamaClient
 from app.config import DATABASE_PATH, MAILBOX_DIR, OLLAMA_GENERATE_URL, OLLAMA_PS_URL, RESULTS_DIR
-from app.repositories.base import IAccessRepository, IBatchRepository, IMetricsRepository
+from app.repositories.base import IBatchRepository, IGmailRepository, IMetricsRepository
 from app.repositories.csv_metrics import CSVMetricsRepository
-from app.repositories.sqlite_access import SQLiteAccessRepository
 from app.repositories.sqlite_batches import SQLiteBatchRepository
-from app.services.access import AccessService
+from app.repositories.sqlite_gmail import SQLiteGmailRepository
 from app.services.assistant import AssistantService
 from app.services.batch import BatchService
 from app.services.benchmark import BenchmarkService
@@ -51,28 +50,20 @@ def get_batch_repository() -> IBatchRepository:
     return SQLiteBatchRepository(DATABASE_PATH)
 
 
-def get_access_repository() -> IAccessRepository:
-    return SQLiteAccessRepository(DATABASE_PATH)
+def get_gmail_repository() -> IGmailRepository:
+    return SQLiteGmailRepository(DATABASE_PATH)
 
 
 def get_batch_service(
     repository: IBatchRepository = Depends(get_batch_repository),
     client: ILLMClient = Depends(get_llm_client),
     state: AppState = Depends(get_app_state),
-    access: IAccessRepository = Depends(get_access_repository)
 ) -> BatchService:
-    return BatchService(repository, TriageService(client, state), state, Path(MAILBOX_DIR), access)
-
-
-def get_access_service(
-    access: IAccessRepository = Depends(get_access_repository),
-    batches: IBatchRepository = Depends(get_batch_repository)
-) -> AccessService:
-    return AccessService(access, batches)
+    return BatchService(repository, TriageService(client, state), state, Path(MAILBOX_DIR))
 
 
 def get_gmail_oauth_service(
-    access: IAccessRepository = Depends(get_access_repository),
+    gmail: IGmailRepository = Depends(get_gmail_repository),
     state: AppState = Depends(get_app_state)
 ) -> GmailOAuthService:
-    return GmailOAuthService(access, state)
+    return GmailOAuthService(gmail, state)

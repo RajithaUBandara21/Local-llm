@@ -5,7 +5,7 @@ from fastapi.responses import RedirectResponse
 
 from app.config import ADMIN_DASHBOARD_URL
 from app.dependencies import get_gmail_oauth_service
-from app.schemas import GmailConnectRequest, GmailConnection
+from app.schemas import GmailConnection
 from app.services.gmail_oauth import GmailOAuthService
 
 logger = logging.getLogger(__name__)
@@ -14,10 +14,8 @@ router = APIRouter()
 
 
 @router.post("/api/gmail/oauth/connect")
-def connect_gmail_endpoint(
-    request: GmailConnectRequest, service: GmailOAuthService = Depends(get_gmail_oauth_service)
-):
-    authorization_url = service.build_authorization_url(request.mailbox)
+def connect_gmail_endpoint(service: GmailOAuthService = Depends(get_gmail_oauth_service)):
+    authorization_url = service.build_authorization_url()
     return {"authorization_url": authorization_url}
 
 

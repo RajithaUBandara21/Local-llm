@@ -6,8 +6,11 @@ from pydantic import ValidationError
 
 from app.loaders.base import EmailLoadError
 from app.loaders.factory import get_email_loader
-from app.repositories.base import IAccessRepository, IBatchRepository
-from app.schemas import BatchStatus, LoadedEmail, StoredEmail, TriageRequest, TriageResponse
+from app.repositories.base import IBatchRepository
+from app.schemas import (
+    BatchStatus, LoadedEmail, ReviewableEmail, ReviewAction, ReviewActionType, StoredEmail, TriageRequest,
+    TriageResponse,
+)
 from app.services.triage import TriageService
 from app.state import AppState
 
@@ -19,15 +22,11 @@ BULK_INSERT_SIZE = 10
 class BatchService:
     """Stores a mailbox file as a batch and triages its emails one at a time, resumably."""
 
-    def __init__(
-        self, repository: IBatchRepository, triage: TriageService, state: AppState, mailbox_dir: Path,
-        access: IAccessRepository,
-    ):
+    def __init__(self, repository: IBatchRepository, triage: TriageService, state: AppState, mailbox_dir: Path):
         self.repository = repository
         self.triage = triage
         self.state = state
         self.mailbox_dir = mailbox_dir
-        self.access = access
 
     def start(self, file_name: str) -> BatchStatus:
         # Routes run in a thread pool, and loading a file takes long enough for two overlapping
@@ -45,13 +44,11 @@ class BatchService:
             self.state.active_batch_id = batch_id
         return self.get(batch_id)
 
-    def bulk_insert(self, mailbox: str) -> BatchStatus:
+    def bulk_insert(self) -> BatchStatus:
         with self.state.batch_lock:
             self._ensure_idle()
-            if mailbox not in self._known_mailboxes():
-                raise HTTPException(status_code=400, detail=f"Unknown mailbox: {mailbox}")
-            source_file = f"test:{mailbox}:{datetime.now(timezone.utc).isoformat()}"
-            batch_id = self.repository.create_batch(source_file, self._synthetic_emails(mailbox))
+            source_file = f"test:{datetime.now(timezone.utc).isoformat()}"
+            batch_id = self.repository.create_batch(source_file, self._synthetic_emails())
             self.state.active_batch_id = batch_id
         return self.get(batch_id)
 
@@ -91,6 +88,15 @@ class BatchService:
     def list_batches(self) -> list[BatchStatus]:
         return [self._with_activity(batch) for batch in self.repository.list_batches()]
 
+    def emails(self, batch_id: int | None = None) -> list[ReviewableEmail]:
+        return self.repository.list_emails(batch_id)
+
+    def review(self, email_id: int, action: ReviewActionType, edited_reply: str | None) -> ReviewAction:
+        email = self.repository.get_email(email_id)
+        if email is None:
+            raise HTTPException(status_code=404, detail=f"No email '{email_id}'.")
+        return self.repository.save_review_action(email_id, action, edited_reply)
+
     def _with_activity(self, batch: BatchStatus) -> BatchStatus:
         return batch.model_copy(update={"active": self.state.active_batch_id == batch.id})
 
@@ -100,13 +106,7 @@ class BatchService:
         if self.state.benchmark_running:
             raise HTTPException(status_code=400, detail="A benchmark is running; try again when it finishes.")
 
-    def _known_mailboxes(self) -> set[str]:
-        mailboxes: set[str] = set()
-        for agent in self.access.list_agents():
-            mailboxes.update(self.access.mailboxes_for(agent.id))
-        return mailboxes
-
-    def _synthetic_emails(self, mailbox: str) -> list[LoadedEmail]:
+    def _synthetic_emails(self) -> list[LoadedEmail]:
         now = datetime.now(timezone.utc)
         return [
             LoadedEmail(
@@ -114,7 +114,6 @@ class BatchService:
                 subject=f"Test email {n}",
                 body_clean=f"This is synthetic test email {n} for bulk-insert testing.",
                 received_at=now - timedelta(minutes=n - 1),
-                mailbox=mailbox,
             )
             for n in range(1, BULK_INSERT_SIZE + 1)
         ]

@@ -4,8 +4,7 @@ import { useBulkInsert } from "@/lib/bulk-insert-context";
 import { BulkInsertRow } from "./BulkInsertRow";
 
 export function BulkInsertPanel() {
-  const { mailbox, mockBatch, processing, insertBatch, clearBatch } =
-    useBulkInsert();
+  const { mockBatch, processing, insertBatch, clearBatch } = useBulkInsert();
   const hasBatch = mockBatch.length > 0;
 
   let hint = "no test batch";
@@ -15,7 +14,7 @@ export function BulkInsertPanel() {
   return (
     <div className="panel bulk-panel" id="bulkPanel">
       <div className="panel-header">
-        <h2>Bulk insert - {mailbox ?? "no mailbox"}</h2>
+        <h2>Bulk insert</h2>
         <span className="hint">{hint}</span>
       </div>
 
@@ -39,8 +38,8 @@ export function BulkInsertPanel() {
           <button
             type="button"
             className="btn btn-primary"
-            disabled={!mailbox || processing}
-            title="Insert a mock batch of test emails into the selected mailbox"
+            disabled={processing}
+            title="Insert a mock batch of test emails"
             onClick={insertBatch}
           >
             Insert test batch
