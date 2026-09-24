@@ -6,13 +6,6 @@ from app.schemas import (
 )
 
 
-class IMetricsRepository(ABC):
-    """Abstract interface for reading benchmark metrics."""
-
-    @abstractmethod
-    def get_latest_metrics(self) -> dict: pass
-
-
 class IBatchRepository(ABC):
     """Abstract interface for storing batches, their emails, and triage results."""
 

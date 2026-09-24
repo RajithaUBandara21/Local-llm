@@ -9,7 +9,6 @@ class AppState:
     def __init__(self):
         self.active_model: str = MODELS[0] if MODELS else "llama3.2"
         self.active_temperature: float = 0.7
-        self.benchmark_running: bool = False
         self.active_batch_id: int | None = None
         # Set to a batch id to ask its running loop to pause after the current email.
         self.stop_batch_id: int | None = None

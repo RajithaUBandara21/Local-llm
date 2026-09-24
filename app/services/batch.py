@@ -214,8 +214,6 @@ class BatchService:
     def _ensure_idle(self) -> None:
         if self.state.active_batch_id is not None:
             raise HTTPException(status_code=400, detail="A batch is already running.")
-        if self.state.benchmark_running:
-            raise HTTPException(status_code=400, detail="A benchmark is running; try again when it finishes.")
 
     def _synthetic_emails(self) -> list[LoadedEmail]:
         now = datetime.now(timezone.utc)

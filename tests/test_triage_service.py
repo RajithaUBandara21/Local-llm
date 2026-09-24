@@ -1,10 +1,9 @@
 import json
 
 import pytest
-from fastapi import HTTPException
 
 from app.clients.base import LLMTimeoutError
-from app.config import MODELS, TRIAGE_MAX_ATTEMPTS, TRIAGE_TIMEOUT_SEC
+from app.config import MODELS, TRIAGE_CONFIDENCE_THRESHOLD, TRIAGE_MAX_ATTEMPTS, TRIAGE_TIMEOUT_SEC
 from app.schemas import TriageRequest, TriageResult
 from app.services.triage import TriageService
 from app.state import AppState
@@ -21,6 +20,7 @@ VALID_REPLY = json.dumps({
     "flag_reason": None,
 })
 INVALID_REPLY = json.dumps({"category": "delivery", "priority": "asap"})
+LOW_CONFIDENCE_REPLY = json.dumps({**json.loads(VALID_REPLY), "confidence": 0.4})
 
 
 def make_service(client):
@@ -71,6 +71,28 @@ def test_two_invalid_replies_go_to_manual_review():
     assert response.failure_reason.startswith("Invalid model output after 2 attempts:")
     assert "priority" in response.failure_reason
     assert len(generate_calls(client)) == 2
+
+
+def test_a_valid_reply_below_the_confidence_threshold_goes_to_manual_review():
+    service, client, _ = make_service(FakeClient(replies=[LOW_CONFIDENCE_REPLY]))
+
+    response = service.triage(EMAIL)
+
+    assert response.status == "needs_review"
+    assert response.attempts == 1
+    assert response.result is not None
+    assert response.result.confidence == 0.4
+    assert f"below the {TRIAGE_CONFIDENCE_THRESHOLD:.2f} threshold" in response.failure_reason
+    assert len(generate_calls(client)) == 1
+
+
+def test_a_valid_reply_at_the_confidence_threshold_is_ok():
+    at_threshold_reply = json.dumps({**json.loads(VALID_REPLY), "confidence": TRIAGE_CONFIDENCE_THRESHOLD})
+    service, _, _ = make_service(FakeClient(replies=[at_threshold_reply]))
+
+    response = service.triage(EMAIL)
+
+    assert response.status == "ok"
 
 
 def test_an_empty_reply_counts_as_invalid():
@@ -124,17 +146,6 @@ def test_a_model_loading_error_fails_without_generating(failing_call):
     assert response.attempts == 0
     assert response.failure_reason == f"Could not load the model: {failing_call} failed"
     assert generate_calls(client) == []
-
-
-def test_it_is_refused_while_a_benchmark_is_running():
-    service, client, state = make_service(FakeClient(replies=[VALID_REPLY]))
-    state.benchmark_running = True
-
-    with pytest.raises(HTTPException) as error:
-        service.triage(EMAIL)
-
-    assert error.value.status_code == 400
-    assert client.calls == []
 
 
 def test_other_models_are_unloaded_and_the_active_one_is_loaded_before_generating():

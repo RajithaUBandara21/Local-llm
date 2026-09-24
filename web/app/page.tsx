@@ -23,9 +23,6 @@ export default function ReviewPage() {
           <Link className="nav-tab" href="/admin">
             Admin
           </Link>
-          <Link className="nav-tab" href="/benchmark">
-            Benchmark
-          </Link>
         </nav>
         <div className="controls">
           <ViewToggle />

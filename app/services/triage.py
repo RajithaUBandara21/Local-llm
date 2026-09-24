@@ -1,9 +1,7 @@
 import time
 
-from fastapi import HTTPException
-
 from app.clients.base import ILLMClient, LLMTimeoutError
-from app.config import TRIAGE_MAX_ATTEMPTS, TRIAGE_TIMEOUT_SEC
+from app.config import TRIAGE_CONFIDENCE_THRESHOLD, TRIAGE_MAX_ATTEMPTS, TRIAGE_TIMEOUT_SEC
 from app.prompts import build_triage_prompt, build_triage_retry_prompt
 from app.schemas import TriageRequest, TriageResponse, TriageResult, TriageStatus
 from app.services.model_loading import unload_others
@@ -19,10 +17,6 @@ class TriageService:
         self.state = state
 
     def triage(self, email: TriageRequest) -> TriageResponse:
-        if self.state.benchmark_running:
-            # Loading the triage model would unload the one the benchmark is measuring.
-            raise HTTPException(status_code=400, detail="A benchmark is running; try again when it finishes.")
-
         model = self.state.active_model
         try:
             unload_others(self.client, model)
@@ -61,6 +55,11 @@ class TriageService:
 
             is_valid, data, error_text = OutputValidator.validate_json(reply.get("response", ""), TriageResult)
             if is_valid:
+                if data["confidence"] < TRIAGE_CONFIDENCE_THRESHOLD:
+                    return respond(
+                        "needs_review", attempt, result=data,
+                        failure_reason=f"Confidence {data['confidence']:.2f} is below the {TRIAGE_CONFIDENCE_THRESHOLD:.2f} threshold.",
+                    )
                 return respond("ok", attempt, result=data)
             attempt_prompt = build_triage_retry_prompt(prompt, error_text)
 

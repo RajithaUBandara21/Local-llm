@@ -8,12 +8,13 @@ attribution.
 
 ## What this is
 
-A local LLM assistant and benchmark service. A FastAPI backend wraps
+A local LLM assistant and email-triage service. A FastAPI backend wraps
 [Ollama](https://ollama.com) so a client can chat with a chosen local model,
-switch models, adjust temperature, and run a benchmark that measures each model's
-speed, resource use, and structured-output reliability. Benchmark results are
-written to CSV files under `results/`. `Front end/prototype.html` is a static
-Bootstrap dashboard prototype that calls the API.
+switch models, adjust temperature, and triage batches of support emails.
+`scripts/` has standalone, non-API benchmark tools (prompt and mail-set) that
+measure a model's speed, resource use, and structured-output reliability,
+writing timestamped CSV files under `results/`. `Front end/prototype.html` is a
+static Bootstrap dashboard prototype that calls the API.
 
 ## Stack
 
@@ -23,7 +24,7 @@ Bootstrap dashboard prototype that calls the API.
 - `pytest` (unit tests)
 - Ollama running at `http://localhost:11434` with the configured models pulled
 - SQLite (standard library `sqlite3`) for batches, emails, triage results, and the
-  decision log; other state is in memory and benchmark output is CSV
+  decision log; other state is in memory and standalone benchmark output is CSV
 
 ## Layout
 
@@ -33,32 +34,34 @@ inward (routes, then services, then interfaces).
 - `app/main.py` - FastAPI app, CORS, routers, and the `python -m app.main` runner
 - `app/config.py` - the only module that reads `.env` or the environment; Ollama
   URL and fixed tuning constants (models, temperatures, retries, triage attempts,
-  timeout, and body cap, results dir)
-- `app/prompts.py` - benchmark prompts and `ACTIVE_PROMPT_IDS`, the switch for
-  which ones run, plus the triage prompt and retry-prompt builders
-- `app/schemas.py` - request models, the `UniversalResponse` benchmark schema,
-  and the triage models (`TriageRequest`, `TriageResult`, `TriageResponse`)
+  timeout, and body cap)
+- `app/prompts.py` - the standalone-benchmark prompts and `ACTIVE_PROMPT_IDS`, the
+  switch for which ones run, plus the triage prompt and retry-prompt builders
+- `app/schemas.py` - request models, the `UniversalResponse` schema used by the
+  standalone prompt benchmark, and the triage models (`TriageRequest`,
+  `TriageResult`, `TriageResponse`)
 - `app/state.py` - in-memory `AppState`
 - `app/dependencies.py` - `Depends` providers, the one place concrete
   implementations are chosen
-- `app/routes/` - HTTP handlers only (`assistant`, `batches`, `benchmark`, `gmail`,
-  `health`, `triage`)
-- `app/services/` - business rules (`assistant`, `batch`, `benchmark`, `gmail_oauth`,
-  `triage`), the benchmark runner, streaming inference with schema validation and
-  retry, `output_validator`, and `model_loading` (unloads every loaded model except
-  the one about to be used)
+- `app/routes/` - HTTP handlers only (`assistant`, `batches`, `gmail`, `health`,
+  `triage`)
+- `app/services/` - business rules (`assistant`, `batch`, `gmail_oauth`, `triage`),
+  streaming inference with schema validation and retry, `output_validator`, and
+  `model_loading` (unloads every loaded model except the one about to be used)
 - `app/clients/` - `ILLMClient` (its `generate` takes an optional JSON schema and
   timeout; a timeout raises `LLMTimeoutError`) and `OllamaClient`
-- `app/repositories/` - `IMetricsRepository` and `CSVMetricsRepository`;
-  `IBatchRepository` and `SQLiteBatchRepository` (schema, results, decision log);
-  `IGmailRepository` and `SQLiteGmailRepository` (the single stored Gmail
-  connection); `sqlite_connection` (the shared connection helper)
+- `app/repositories/` - `IBatchRepository` and `SQLiteBatchRepository` (schema,
+  results, decision log); `IGmailRepository` and `SQLiteGmailRepository` (the
+  single stored Gmail connection); `sqlite_connection` (the shared connection helper)
 - `app/loaders/` - mailbox file loaders: `IEmailLoader` and `EmailLoadError`,
   `CsvEmailLoader` and `MboxEmailLoader`, the body `cleaner`, and the extension
   `factory`
 - `app/resource_monitor.py` - CPU, RAM, and VRAM sampling for the Ollama process tree
 - `tests/` - pytest unit tests; `pytest.ini` puts the project root on the import path
-- `results/` - benchmark CSV output (timestamped per model and run)
+- `scripts/` - standalone prompt and mail-set benchmark entry points
+  (`run_prompt_benchmark.py`, `run_mailset_benchmark.py`) and their config files;
+  no FastAPI server or route calls them
+- `results/` - standalone benchmark CSV output (timestamped per model and run)
 - `data/` - `northport_emails.csv`, 100 labeled synthetic support emails (ground
   truth for triage evaluation), and a README with the columns and labeling rules
 - `.env.example` - tracked list of settings; copy to the git-ignored `.env`
@@ -146,14 +149,16 @@ Windows, from the project root.
 - Install dependencies: `pip install -r requirements.txt`
 - Dev server: `uvicorn app.main:app --reload --port 8000` (`http://localhost:8000`,
   interactive docs at `/docs`, health at `/health`); `python -m app.main` does the same
-- Benchmark: start it with `POST /api/benchmark/start`; there is no standalone
-  command-line entry point
+- Standalone prompt benchmark: `python scripts/run_prompt_benchmark.py` (edit
+  `scripts/benchmark_prompt_config.py` first); standalone mail-set benchmark:
+  `python scripts/run_mailset_benchmark.py` (edit
+  `scripts/mailset_benchmark_config.py` first). Neither needs the FastAPI server.
 - Test: `python -m pytest` (needs no Ollama or GPU)
 - Build: none
 - Lint: none configured
 
-Ollama must be running with the models named in `app/config.py` available before chat
-or benchmark calls will succeed.
+Ollama must be running with the models named in `app/config.py` available before chat,
+triage, or benchmark script calls will succeed.
 
 Review page (`web/`), Windows, from `web/`.
 
@@ -168,23 +173,23 @@ Review page (`web/`), Windows, from `web/`.
 
 pytest is set up and the `test` command above is the gate. The suite covers
 `OutputValidator.validate_json`, the retry flow in `app/services/inference.py`
-(with `requests` and resource sampling mocked), `CSVMetricsRepository` (against
-temporary directories), the `.env` config loader, the prompt switch,
-`AssistantService`, `BenchmarkService`, `unload_others` in
+(with `requests` and resource sampling mocked), the `.env` config loader, the
+prompt switch, `AssistantService`, `unload_others` in
 `app/services/model_loading.py`, `SQLiteBatchRepository` (real SQLite files in
 temporary directories), `BatchService` (crash and resume, guards including
 overlapping starts, file-name checks), `SQLiteGmailRepository`, `GmailOAuthService`
 (connect, callback, status, disconnect, revoke-on-disconnect paths), the email
 cleaner, `CsvEmailLoader`, `MboxEmailLoader`, and the loader factory (against
-temporary files), and the benchmark, triage, gmail, and batch route functions
-(called directly with fakes, since `httpx` for `TestClient` is not installed).
+temporary files), and the triage, gmail, and batch route functions (called
+directly with fakes, since `httpx` for `TestClient` is not installed).
 Triage is covered by the schema rules, the prompt builders, `TriageService`
 (every retry, timeout, and failure branch), and `OllamaClient.generate` (with
 `requests` mocked). `tests/test_dataset.py` checks the real
 `data/northport_emails.csv` (structure, labels, cleaner round trip). The shared
 fake `ILLMClient` is `tests/fakes.py`.
-The other `OllamaClient` methods, `benchmark_runner`, and `resource_monitor` are not covered. Do not unit test live Ollama,
-`nvidia-smi`, or the static dashboard; verify those by running the app.
+The other `OllamaClient` methods, `resource_monitor`, and the standalone
+`scripts/` benchmarks are not covered. Do not unit test live Ollama, `nvidia-smi`,
+or the static dashboard; verify those by running the app.
 
 `web/` has no JS test runner; the same rule applies. `npm run build` (TypeScript
 check plus the Next.js build) is its gate. Verify its behavior by running

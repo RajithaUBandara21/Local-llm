@@ -23,6 +23,18 @@ function endOfDayIfMidnight(to: string): string {
   return `${to.slice(0, 10)}T23:59:59`;
 }
 
+// datetime-local values are in the browser's local time zone with no
+// timezone marker; the API's received_at data (and its range filter) is UTC,
+// so a naive local string must become a real UTC instant, not be sent as-is
+// (which the backend would otherwise treat as already being UTC, silently
+// shifting the boundary by the local offset).
+function localToUtcIso(value: string): string | undefined {
+  if (!value) return undefined;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return undefined;
+  return date.toISOString();
+}
+
 function inRange(iso: string, from: string, to: string): boolean {
   const value = new Date(iso).getTime();
   if (Number.isNaN(value)) return false;
@@ -81,7 +93,7 @@ export function ProcessFilterModal({
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    onConfirm(from || undefined, endOfDayIfMidnight(to) || undefined);
+    onConfirm(localToUtcIso(from), localToUtcIso(endOfDayIfMidnight(to)));
     onClose();
   }
 

@@ -52,16 +52,12 @@ ADMIN_DASHBOARD_URL = load_setting("ADMIN_DASHBOARD_URL", "http://localhost:3000
 
 MODELS = ["llama3.2", "phi-4-Q4", "mistral-7b-q4", "mistral-7b-Q5"]
 TEMPERATURES = [0.0, 0.7]
-RUNS_PER_PROMPT = 3
-# Upper bound for a per-request override, so a typo cannot start an enormous run.
-MAX_RUNS_PER_PROMPT = 10
 MAX_RETRIES = 3
-RESULTS_DIR = "results"
 
-# MAX_RETRIES above belongs to the benchmark and counts total attempts; triage has
-# its own pair so one retry (two attempts) does not change benchmark behavior.
 TRIAGE_MAX_ATTEMPTS = 2
 TRIAGE_TIMEOUT_SEC = 30
+# A structurally valid result below this confidence still goes to manual review.
+TRIAGE_CONFIDENCE_THRESHOLD = 0.65
 # About 1500 tokens, so the prompt stays inside a small default context window
 # instead of being silently truncated by Ollama.
 TRIAGE_MAX_BODY_CHARS = 6000

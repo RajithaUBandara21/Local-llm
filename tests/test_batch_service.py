@@ -205,19 +205,6 @@ def test_resume_is_refused_while_a_batch_is_running(tmp_path, mailbox_dir):
     assert error.value.status_code == 400
 
 
-def test_start_and_resume_are_refused_while_a_benchmark_runs(tmp_path, mailbox_dir):
-    service, _, state, repo = make_service(tmp_path, mailbox_dir)
-    batch_id = repo.create_batch("four.csv", [])
-    state.benchmark_running = True
-
-    for call in (lambda: service.start("four.csv"), lambda: service.resume(batch_id)):
-        with pytest.raises(HTTPException) as error:
-            call()
-        assert error.value.status_code == 400
-        assert "benchmark" in error.value.detail
-    assert state.active_batch_id is None
-
-
 def test_a_completed_batch_cannot_be_resumed(tmp_path, mailbox_dir):
     service, _, state, _ = make_service(tmp_path, mailbox_dir, FakeClient(replies=[VALID_REPLY] * 4))
     batch = service.start("four.csv")
@@ -410,17 +397,10 @@ def test_bulk_insert_creates_a_tagged_batch_of_ten_synthetic_emails(tmp_path, ma
     assert [email.subject for email in emails] == [f"Test email {n}" for n in range(1, 11)]
 
 
-def test_bulk_insert_is_refused_while_a_batch_or_benchmark_is_active(tmp_path, mailbox_dir):
-    service, _, state, repo = make_service(tmp_path, mailbox_dir)
+def test_bulk_insert_is_refused_while_a_batch_is_active(tmp_path, mailbox_dir):
+    service, _, _, repo = make_service(tmp_path, mailbox_dir)
     service.bulk_insert()
 
-    with pytest.raises(HTTPException) as error:
-        service.bulk_insert()
-    assert error.value.status_code == 400
-    assert [b.id for b in repo.list_batches()] == [1]
-
-    state.active_batch_id = None
-    state.benchmark_running = True
     with pytest.raises(HTTPException) as error:
         service.bulk_insert()
     assert error.value.status_code == 400

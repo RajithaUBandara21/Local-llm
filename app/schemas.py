@@ -34,16 +34,6 @@ class ActiveModelSettings(BaseModel):
     active_temperature: float
 
 
-class BenchmarkSetting(BaseModel):
-    model: str
-    temperature: float
-
-
-class BenchmarkRequest(BaseModel):
-    configs: list[BenchmarkSetting] | None = None
-    runs_per_prompt: int | None = None
-
-
 class LoadedEmail(BaseModel):
     """One cleaned email from a mailbox file, before it is stored or triaged."""
     sender: str

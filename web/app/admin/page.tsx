@@ -16,9 +16,6 @@ export default function AdminPage() {
             Mail queue
           </Link>
           <span className="nav-tab active">Admin</span>
-          <Link className="nav-tab" href="/benchmark">
-            Benchmark
-          </Link>
         </nav>
       </header>
 

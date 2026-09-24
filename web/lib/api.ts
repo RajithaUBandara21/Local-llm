@@ -2,8 +2,6 @@ import type {
   ActiveModelSettings,
   AvailableModelsResponse,
   BatchStatus,
-  BenchmarkConfig,
-  BenchmarkMetrics,
   ReviewableEmail,
   ReviewAction,
   ReviewActionType,
@@ -196,32 +194,4 @@ export function setActiveTemperature(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ temperature }),
   });
-}
-
-export function getBenchmarkConfig(): Promise<BenchmarkConfig> {
-  return apiFetch<BenchmarkConfig>("/api/benchmark/config");
-}
-
-export interface BenchmarkStartConfig {
-  model: string;
-  temperature: number;
-}
-
-export function startBenchmark(
-  configs: BenchmarkStartConfig[],
-  runsPerPrompt: number
-): Promise<{ status: string }> {
-  return apiFetch<{ status: string }>("/api/benchmark/start", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ configs, runs_per_prompt: runsPerPrompt }),
-  });
-}
-
-export function getBenchmarkStatus(): Promise<{ benchmark_running: boolean }> {
-  return apiFetch<{ benchmark_running: boolean }>("/api/benchmark/status");
-}
-
-export function getBenchmarkMetrics(): Promise<BenchmarkMetrics> {
-  return apiFetch<BenchmarkMetrics>("/api/benchmark/metrics");
 }

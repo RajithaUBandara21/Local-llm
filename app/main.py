@@ -3,11 +3,11 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routes import assistant, batches, benchmark, gmail, health, triage
+from app.routes import assistant, batches, gmail, health, triage
 
 logging.basicConfig(level=logging.INFO)
 
-app = FastAPI(title="SOLID AI Assistant & Benchmark API")
+app = FastAPI(title="SOLID AI Assistant API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -19,7 +19,6 @@ app.add_middleware(
 
 app.include_router(assistant.router)
 app.include_router(batches.router)
-app.include_router(benchmark.router)
 app.include_router(gmail.router)
 app.include_router(health.router)
 app.include_router(triage.router)
