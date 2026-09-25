@@ -34,9 +34,14 @@ def load_setting(name: str, default: str, env_file: Path = ENV_FILE) -> str:
     return read_env_file(env_file).get(name, default)
 
 
+def generate_url(base: str) -> str:
+    """Derive the /api/generate endpoint from a base URL, dropping a trailing slash."""
+    return f"{base.rstrip('/')}/api/generate"
+
+
 OLLAMA_URL = load_setting("OLLAMA_URL", "http://localhost:11434").rstrip("/")
 DATABASE_PATH = load_setting("DATABASE_PATH", "triage.db")
-OLLAMA_GENERATE_URL = f"{OLLAMA_URL}/api/generate"
+OLLAMA_GENERATE_URL = generate_url(OLLAMA_URL)
 OLLAMA_PS_URL = f"{OLLAMA_URL}/api/ps"
 OLLAMA_TAGS_URL = f"{OLLAMA_URL}/api/tags"
 

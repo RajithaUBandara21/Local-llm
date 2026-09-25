@@ -26,33 +26,33 @@ Pydantic validation --(invalid)--> retry once --(still invalid)--> manual review
 SQLite
         |
         v
-FastAPI + review page (agent approves, edits, or rejects)
+FastAPI + review page (an operator approves, edits, or rejects)
 ```
 
 An email file is loaded and cleaned, queued in a batch, sent to a small local
 model through Ollama, and the JSON reply is validated against a strict schema
-before anything downstream sees it. Results are stored in SQLite and shown to a
-support agent, who approves, edits, or rejects each draft. Nothing is sent
-anywhere. The whole path runs on one machine with no external network calls.
+before anything downstream sees it. Results are stored in SQLite and shown on
+the review page to whoever is using it, who approves, edits, or rejects each
+draft. There is a single shared inbox with no per-agent identity or mailbox
+boundary. Nothing is sent anywhere. The whole path runs on one machine with no
+external network calls.
 
 ## Components
 
 | Stage | Where it lives | Status |
 | --- | --- | --- |
-| HTTP API (chat, model switch, temperature, benchmark, health) | `app/routes/`, `app/main.py` | built |
+| HTTP API (chat, model switch, temperature, triage, batches, Gmail, health) | `app/routes/`, `app/main.py` | built |
 | Schema-validated inference with feedback retry and streaming metrics | `app/services/inference.py`, `app/services/output_validator.py` | built |
 | Ollama access behind an interface, with an optional output schema and timeout | `app/clients/base.py`, `app/clients/ollama.py` | built |
 | One model loaded at a time | `app/services/model_loading.py` | built |
 | CPU, RAM, and VRAM sampling | `app/resource_monitor.py` | built |
-| Benchmark runner and CSV output | `app/services/benchmark_runner.py`, `app/repositories/csv_metrics.py` | built |
+| Standalone prompt and mail-set benchmark scripts (CSV output, no API) | `scripts/run_prompt_benchmark.py`, `scripts/run_mailset_benchmark.py` | built |
 | Settings (Ollama URL, models, retries) | `app/config.py` | built |
 | Email loader and cleaner | `app/loaders/` | built |
 | Batch queue with resume on crash, `POST /api/batches` | `app/services/batch.py`, `app/routes/batches.py` | built |
 | Triage endpoint, `POST /api/triage`, with prompt, validation, one retry, and manual-review fallback | `app/routes/triage.py`, `app/services/triage.py`, `app/prompts.py`, `app/schemas.py` | built |
 | SQLite storage (batches, emails, results) and decision log | `app/repositories/sqlite_batches.py` | built |
-| Simulated identity and mailbox permissions (`X-Agent-Id` header, seed file, denial log) | `app/services/access.py`, `app/routes/access.py`, `app/repositories/sqlite_access.py`, `app/loaders/seed_loader.py`, `data/agents.json` | built |
-| Agent review page | not yet written | planned |
-| Benchmark dashboard | not yet written | planned |
+| Review page | `web/` | built |
 | Docker Compose deployment with structured logs | not yet written | planned |
 
 Dependencies point inward: routes call services, services call interfaces
@@ -61,7 +61,7 @@ chosen in one place, `app/dependencies.py`. Triage follows the same shape.
 
 ## Data flow
 
-1. An agent or script names a mailbox file (mbox or CSV) that already sits in the
+1. An operator names a mailbox file (mbox or CSV) that already sits in the
    server's mailbox folder (`POST /api/batches`); only a bare file name is
    accepted, never a path. `built`
 2. The loader parses it and the cleaner strips signatures, quoted replies, and
@@ -72,20 +72,18 @@ chosen in one place, `app/dependencies.py`. Triage follows the same shape.
 4. Each email is sent to the active Ollama model with the triage schema as the
    required output format. Before the call, every other loaded model is
    unloaded and the active one is loaded, so a cold start does not count against
-   the timeout. `built` (the triage call is not streamed; only the benchmark
-   measures time to first token)
+   the timeout. `built` (the triage call is not streamed; only the standalone
+   benchmark scripts measure time to first token)
 5. The reply is validated with Pydantic. Invalid output gets one retry with the
    validation errors fed back. Output that is still invalid goes to manual
    review, and a timeout or model error is marked failed. The batch stores that
    status and moves on to the next email. An email with no readable body, or one
-   longer than the body cap, goes to manual review without a model call. `built`;
-   the manual review queue itself is `planned`
+   longer than the body cap, goes to manual review without a model call. `built`
 6. The result and a decision log entry (email id, model, latency, outcome) are
    written to SQLite in one transaction. `built`
-7. The agent sees only the mailboxes assigned to them (`GET /api/mailboxes` and
-   `GET /api/mailboxes/{mailbox}/emails`, with the agent in the `X-Agent-Id`
-   header); the server refuses anything else and logs the denial. `built`. Approving,
-   editing, or rejecting each draft is `planned`
+7. The review page reads the shared queue (`GET /api/emails`), and an operator
+   approves, edits, or rejects each draft (`POST /api/emails/{email_id}/review`).
+   There is no per-agent identity or mailbox boundary. `built`
 
 ## Output schema
 
@@ -102,7 +100,8 @@ The model must return this shape (Pydantic model `TriageResult`, `built`):
 | `flag_reason` | string or null | required when `flags` is not empty |
 
 Manual review is decided by the pipeline after failed validation or a timeout,
-never by the model. The general benchmark keeps its own schema, `UniversalResponse`.
+never by the model. The standalone prompt benchmark script keeps its own
+schema, `UniversalResponse`.
 
 Priority rules: category is independent of priority. Priority comes from money or
 legal exposure, time-sensitivity, and repeat contact. When unsure between two
@@ -117,25 +116,19 @@ levels the higher one wins, and spam is always low.
 | SQLite | Postgres | Concurrent writers. Fine for 1,500 emails a week and one operator; revisit only if concurrency demands it |
 | Batch table in SQLite | Message broker or task queue | Throughput scaling and multiple workers. Gains one fewer service and simple resume |
 | Validate, then retry once, then manual review | More retries | A few recoverable emails go to a person. Bounds latency per email and keeps the queue moving |
-| Simulated agent identity, permissions enforced on the server | Real authentication or SSO | Real identity. Fine for internal trusted users and a demo; the server check is still the real boundary |
+| Single shared inbox, no identity boundary | Per-agent identity and mailbox permissions | Access control between operators. Fine for one internal user or team sharing the same queue |
 | Ollama on the host | Ollama inside the container | A self-contained container. Gains the existing installation and model files without duplicating multi-GB models |
 | One model loaded at a time | Several loaded models | Some warm-up time on a switch. Gains measurements that belong to one model and fits small RAM |
 | Human approves every draft | Auto-send | Speed. Removes the risk of a wrong or out-of-policy reply reaching a customer |
 | Synthetic emails only | Real customer mail | Realism. Avoids PII entirely; labels are made ahead of time with Claude, never at runtime |
 
-## Permissions, retries, and timeouts
+## Retries and timeouts
 
-- **Permissions:** each agent sees only assigned mailboxes. The seed data has
-  four agents and three mailboxes: support (all four), refunds (two agents), and
-  deliveries (two agents). They come from `data/agents.json` and are loaded into
-  SQLite at start-up. The client claims an agent in the `X-Agent-Id` header (there
-  are no passwords), and the check is on the server: a missing or unknown agent
-  gets 401, and an unassigned or nonexistent mailbox gets the same 403 with no
-  data and a row in `access_denials`. `built`
 - **Retries:** triage makes two attempts in total, meaning one retry. In
-  `app/config.py`, `MAX_RETRIES` is 3 and counts total attempts, and it applies
-  to the benchmark path today. Triage uses its own `TRIAGE_MAX_ATTEMPTS`, set to
-  2. Only invalid output is retried; a timeout or model error is not.
+  `app/config.py`, `MAX_RETRIES` is 3 and counts total attempts for the
+  standalone prompt benchmark script. Triage uses its own
+  `TRIAGE_MAX_ATTEMPTS`, set to 2. Only invalid output is retried; a timeout
+  or model error is not.
 - **Timeout:** the model call gets 30 seconds (`TRIAGE_TIMEOUT_SEC`), then the
   email is marked `failed` and goes to manual review, and the batch continues
   with the next email. `built`.
@@ -152,8 +145,7 @@ failure-case evaluation. None has been tested yet.
 | 1 | Stale data: the email refers to an old thread or expired order | Flag `stale_context`; the draft does not assert stale facts |
 | 2 | Invalid structure: broken JSON | Retry once, then manual review; the batch continues |
 | 3 | Timeout: Ollama stops or hangs mid-batch | Mark failed, resume the remaining emails, log the event |
-| 4 | No permission: an agent opens an unassigned mailbox | Access denied and logged; no data returned |
-| 5 | Out of policy: the email asks for legal or medical advice | Flag `out_of_policy`, no draft, reason recorded |
+| 4 | Out of policy: the email asks for legal or medical advice | Flag `out_of_policy`, no draft, reason recorded |
 
 ## Deliberately not automated
 
@@ -165,7 +157,8 @@ failure-case evaluation. None has been tested yet.
 
 - A GPU or a larger model, if accuracy or latency on the target machine falls
   short.
-- Single sign-on and real authentication in place of the simulated identity.
+- Single sign-on and real authentication, and per-operator mailbox permissions,
+  if more than one internal user or team shares the queue.
 - Monitoring and alerting on batch failures, timeouts, and manual-review volume.
 - IMAP ingestion, so mail is pulled directly instead of loaded from files.
 - An active-learning loop that feeds agent edits and rejections back into
@@ -179,6 +172,5 @@ failure-case evaluation. None has been tested yet.
   is unlikely. This will be reported honestly.
 - The two Mistral files are different versions (v0.3 at Q4, v0.1 at Q5), so a
   Q4 versus Q5 comparison is indicative, not controlled.
-- Undecided: the web stack for the review page and dashboard, a bulk unlabeled
-  file for batch and throughput tests (the labeled set is 100 emails), and the
-  storage format of the labeled ground truth.
+- Undecided: a bulk unlabeled file for batch and throughput tests (the labeled
+  set is 100 emails), and the storage format of the labeled ground truth.

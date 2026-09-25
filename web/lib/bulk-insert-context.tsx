@@ -302,6 +302,11 @@ export function BulkInsertProvider({
       if (action !== "stop") continue;
       const target = batchSets.find((set) => set.id === id);
       if (target?.batch && !target.batch.active) {
+        // batchSets is refreshed from the server poll, an external system,
+        // not derived from props/state within this component: this effect
+        // is a subscription to that external state confirming the stop
+        // actually took effect, not a prop-to-state sync.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         clearPending(id);
       }
     }

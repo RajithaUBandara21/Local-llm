@@ -254,6 +254,24 @@ def test_a_name_that_is_not_a_bare_file_name_is_refused(tmp_path, mailbox_dir, n
     assert state.active_batch_id is None
 
 
+def test_a_symlink_inside_the_mailbox_folder_is_refused(tmp_path, mailbox_dir):
+    outside_secret = tmp_path / "secret.csv"
+    outside_secret.write_text(csv_text(["hidden"]), encoding="utf-8")
+    link = mailbox_dir / "link.csv"
+    try:
+        link.symlink_to(outside_secret)
+    except OSError:
+        pytest.skip("Creating a symlink is not permitted in this environment.")
+    service, _, state, repo = make_service(tmp_path, mailbox_dir)
+
+    with pytest.raises(HTTPException) as error:
+        service.start("link.csv")
+
+    assert error.value.status_code == 400
+    assert repo.list_batches() == []
+    assert state.active_batch_id is None
+
+
 def test_a_missing_file_a_directory_and_an_unsupported_type_are_refused(tmp_path, mailbox_dir):
     (mailbox_dir / "notes.txt").write_text("hello", encoding="utf-8")
     (mailbox_dir / "folder.csv").mkdir()

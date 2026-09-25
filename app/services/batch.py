@@ -232,6 +232,8 @@ class BatchService:
         if file_name in ("", ".", "..") or Path(file_name).name != file_name:
             raise HTTPException(status_code=400, detail="File must be a bare file name in the mailbox folder.")
         path = self.mailbox_dir / file_name
+        if path.is_symlink():
+            raise HTTPException(status_code=400, detail=f"Mailbox file not found: {file_name}")
         if not path.is_file():
             raise HTTPException(status_code=400, detail=f"Mailbox file not found: {file_name}")
         return path

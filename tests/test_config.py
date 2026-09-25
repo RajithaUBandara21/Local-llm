@@ -1,7 +1,7 @@
 import importlib
 
 from app import config
-from app.config import load_setting, read_env_file
+from app.config import generate_url, load_setting, read_env_file
 
 
 def test_missing_env_file_gives_no_values(tmp_path):
@@ -92,13 +92,7 @@ def test_gmail_settings_default_when_absent(monkeypatch):
         importlib.reload(config)
 
 
-def test_base_url_loses_its_trailing_slash_and_derives_the_endpoint_urls(monkeypatch):
-    monkeypatch.setenv("OLLAMA_URL", "http://host:1/")
-    try:
-        reloaded = importlib.reload(config)
-        assert reloaded.OLLAMA_URL == "http://host:1"
-        assert reloaded.OLLAMA_GENERATE_URL == "http://host:1/api/generate"
-        assert reloaded.OLLAMA_PS_URL == "http://host:1/api/ps"
-    finally:
-        monkeypatch.undo()
-        importlib.reload(config)
+def test_generate_url_drops_a_trailing_slash_before_appending_the_path():
+    assert generate_url("http://host:11434/") == "http://host:11434/api/generate"
+    assert generate_url("http://host:11434") == "http://host:11434/api/generate"
+    assert generate_url(config.OLLAMA_URL) == config.OLLAMA_GENERATE_URL

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useModelSettings } from "@/lib/model-settings-context";
 
 const MIN_TEMPERATURE = 0;
@@ -19,17 +19,12 @@ export function ModelSettingsPanel() {
     applySettings,
   } = useModelSettings();
 
-  const [selectedModel, setSelectedModel] = useState("");
-  const [temperature, setTemperature] = useState(activeTemperature);
-
-  // Seeds the editable fields once the active settings load, without
-  // clobbering in-progress edits on a later re-render.
-  useEffect(() => {
-    setSelectedModel((current) => current || activeModel);
-  }, [activeModel]);
-  useEffect(() => {
-    setTemperature(activeTemperature);
-  }, [activeTemperature]);
+  // Edits start out unset and fall back to the active settings until the
+  // user picks a value, without an effect to sync them on every load.
+  const [editedModel, setEditedModel] = useState<string | null>(null);
+  const [editedTemperature, setEditedTemperature] = useState<number | null>(null);
+  const selectedModel = editedModel ?? activeModel;
+  const temperature = editedTemperature ?? activeTemperature;
 
   const isDirty = selectedModel !== activeModel || temperature !== activeTemperature;
   const isTemperatureValid =
@@ -70,7 +65,7 @@ export function ModelSettingsPanel() {
                   id="admin-model-select"
                   value={selectedModel}
                   disabled={saving}
-                  onChange={(e) => setSelectedModel(e.target.value)}
+                  onChange={(e) => setEditedModel(e.target.value)}
                 >
                   {models.map((model) => (
                     <option key={model} value={model}>
@@ -91,7 +86,7 @@ export function ModelSettingsPanel() {
                 step={0.1}
                 value={temperature}
                 disabled={saving}
-                onChange={(e) => setTemperature(Number(e.target.value))}
+                onChange={(e) => setEditedTemperature(Number(e.target.value))}
               />
             </div>
           </div>

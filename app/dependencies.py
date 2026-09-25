@@ -1,3 +1,4 @@
+from functools import lru_cache
 from pathlib import Path
 
 from fastapi import Depends
@@ -33,10 +34,12 @@ def get_triage_service(
     return TriageService(client, state)
 
 
+@lru_cache
 def get_batch_repository() -> IBatchRepository:
     return SQLiteBatchRepository(DATABASE_PATH)
 
 
+@lru_cache
 def get_gmail_repository() -> IGmailRepository:
     return SQLiteGmailRepository(DATABASE_PATH)
 
